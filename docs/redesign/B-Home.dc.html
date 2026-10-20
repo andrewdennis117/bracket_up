@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>BracketUp Home — Seeded</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#030712}
+a{color:#c4b5fd}a:hover{color:#ddd6fe}
+.pressable{transition:transform 120ms ease, background-color 120ms ease}
+.pressable:active{transform:scale(0.97)}
+.draw{stroke-dasharray:420;stroke-dashoffset:420;animation:draw 1400ms 300ms cubic-bezier(.6,0,.2,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion: reduce){.pressable{transition:none}.pressable:active{transform:none}.draw{animation:none;stroke-dashoffset:0}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1800px; box-sizing: border-box; background: #030712; color: #ffffff; font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; height: 64px; box-sizing: border-box; border-bottom: 1px solid #111827">
+    <div style="display: flex; align-items: center; gap: 10px">
+      <div style="width: 28px; height: 28px; border-radius: 8px; background: #7c3aed; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h5v14H4"></path><path d="M9 12h6"></path><path d="M15 8h5v8h-5"></path></svg>
+      </div>
+      <span style="font-size: 16px; font-weight: 600; letter-spacing: -0.01em">BracketUp</span>
+    </div>
+    <a href="#" style="font-size: 14px; color: #9ca3af; text-decoration: none; min-height: 44px; display: flex; align-items: center">My tournaments</a>
+  </header>
+
+  <section style="padding: 36px 20px 0">
+    <h1 style="margin: 0; font-size: 38px; line-height: 1.08; font-weight: 600; letter-spacing: -0.035em">Run the whole tournament from your pocket.</h1>
+    <p style="margin: 16px 0 0; font-size: 16px; line-height: 1.55; color: #9ca3af">Round robin to set the seeds. A bracket to settle it. The payout, worked out. For ping pong night, the putting league, or whatever your crew plays.</p>
+  </section>
+
+  <section style="padding: 28px 20px 0" aria-hidden="true">
+    <svg width="350" height="196" viewBox="0 0 350 196" fill="none" style="display: block">
+      <g font-family="Geist Mono, ui-monospace, monospace" font-size="11" fill="#6b7280">
+        <text x="0" y="16" fill="#ffffff">1</text><text x="0" y="40">8</text><text x="0" y="64">4</text><text x="0" y="88">5</text>
+        <text x="0" y="112">3</text><text x="0" y="136">6</text><text x="0" y="160">2</text><text x="0" y="184">7</text>
+      </g>
+      <g stroke="#374151" stroke-width="1.5" stroke-linejoin="round">
+        <path d="M16 12H90V36H16M90 24H170"></path>
+        <path d="M16 60H90V84H16M90 72H170"></path>
+        <path d="M16 108H90V132H16M90 120H170"></path>
+        <path d="M16 156H90V180H16M90 168H170"></path>
+        <path d="M170 24V72M170 48H250M170 120V168M170 144H250M250 48V144M250 96H330"></path>
+      </g>
+      <path class="draw" d="M16 12H90V24H170V48H250V96H330" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>
+      <circle cx="337" cy="96" r="7" fill="#facc15"></circle>
+    </svg>
+  </section>
+
+  <section style="padding: 32px 20px 0">
+    <label for="joinB" style="display: block; font-size: 14px; color: #9ca3af; margin-bottom: 8px">Have a share code? Watch live, no account needed.</label>
+    <div style="display: flex; height: 56px; border: 1px solid #374151; border-radius: 12px; background: #111827; overflow: hidden">
+      <input id="joinB" type="text" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="Enter code" style="flex: 1; min-width: 0; background: transparent; border: none; color: #ffffff; font-family: 'Geist Mono', ui-monospace, monospace; font-size: 20px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; padding: 0 16px; outline: none">
+      <button type="button" aria-label="Join tournament" class="pressable" style="width: 56px; border: none; border-left: 1px solid #374151; background: #1f2937; color: #ffffff; display: flex; align-items: center; justify-content: center">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </button>
+    </div>
+  </section>
+
+  <section style="padding: 48px 20px 0">
+    <div style="display: flex; flex-direction: column">
+
+      <div style="padding: 24px 0; border-top: 1px solid #1f2937; display: flex; gap: 20px">
+        <div style="flex: 1">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 12px; color: #c4b5fd; letter-spacing: 0.06em"><span style="width: 8px; height: 8px; border-radius: 2px; background: #8b5cf6"></span>PHASE 1</div>
+          <h2 style="margin: 8px 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em">Round robin</h2>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #9ca3af">Everyone plays everyone once. Tap in scores; the standings re-seed as you go.</p>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; width: 84px; align-self: center" aria-hidden="true">
+          <sc-for list="{{matrix}}" as="c" hint-placeholder-count="36">
+            <span style="{{c.style}}"></span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding: 24px 0; border-top: 1px solid #1f2937; display: flex; gap: 20px">
+        <div style="flex: 1">
+          <div style="display: flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 12px; color: #fbbf24; letter-spacing: 0.06em"><span style="width: 8px; height: 8px; border-radius: 2px; background: #f59e0b"></span>PHASE 2</div>
+          <h2 style="margin: 8px 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em">Seeded bracket</h2>
+          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #9ca3af">Top seed plays bottom seed. Lose once and you’re out.</p>
+        </div>
+        <div style="font-family: 'Geist Mono', monospace; font-size: 13px; line-height: 1.9; color: #9ca3af; align-self: center; text-align: right" aria-hidden="true">
+          <div><span style="color: #ffffff">1</span> v 8</div><div>4 v 5</div><div>3 v 6</div><div>2 v 7</div>
+        </div>
+      </div>
+
+      <div style="padding: 24px 0; border-top: 1px solid #1f2937; border-bottom: 1px solid #1f2937">
+        <div style="display: flex; align-items: center; gap: 8px; font-family: 'Geist Mono', monospace; font-size: 12px; color: #34d399; letter-spacing: 0.06em"><span style="width: 8px; height: 8px; border-radius: 2px; background: #10b981"></span>PHASE 3</div>
+        <h2 style="margin: 8px 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -0.02em">Payout</h2>
+        <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.5; color: #9ca3af">Set the entry fee and the split once. Everyone sees the same numbers at the end.</p>
+        <div style="display: flex; height: 10px; border-radius: 5px; overflow: hidden; gap: 2px" aria-hidden="true">
+          <div style="flex: 70; background: #facc15"></div>
+          <div style="flex: 30; background: #6b7280"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums">
+          <div><div style="font-size: 12px; color: #9ca3af">1st · 70%</div><div style="font-size: 26px; font-weight: 700; color: #facc15; letter-spacing: -0.03em">$56</div></div>
+          <div style="text-align: right"><div style="font-size: 12px; color: #9ca3af">2nd · 30%</div><div style="font-size: 26px; font-weight: 700; color: #d1d5db; letter-spacing: -0.03em">$24</div></div>
+        </div>
+        <div style="margin-top: 6px; font-size: 12px; color: #9ca3af">Example: 8 players, $10 entry</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding: 40px 20px 0">
+    <h2 style="margin: 0 0 12px; font-size: 14px; font-weight: 500; color: #9ca3af">Singles or doubles, random or picked teams</h2>
+    <div style="display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; gap: 14px; height: 52px; border-bottom: 1px solid #111827; font-size: 16px"><span style="font-size: 20px">🥏</span>Disc golf putting</div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 52px; border-bottom: 1px solid #111827; font-size: 16px"><span style="font-size: 20px">🏓</span>Ping pong</div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 52px; border-bottom: 1px solid #111827; font-size: 16px"><span style="font-size: 20px">🏀</span>Basketball</div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 52px; border-bottom: 1px solid #111827; font-size: 16px"><span style="font-size: 20px">🏐</span>Volleyball</div>
+      <div style="display: flex; align-items: center; gap: 14px; height: 52px; font-size: 16px"><span style="font-size: 20px">🏆</span>Your own game</div>
+    </div>
+  </section>
+
+  <footer style="margin-top: auto; padding: 32px 20px 24px; font-size: 13px; color: #9ca3af">BracketUp</footer>
+
+  <div style="position: sticky; bottom: 0; padding: 12px 20px 24px; background: #030712; border-top: 1px solid #1f2937">
+    <button type="button" class="pressable" style="width: 100%; height: 54px; border: none; border-radius: 12px; background: #7c3aed; color: #ffffff; font-family: inherit; font-size: 16px; font-weight: 600">Start a tournament</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const cells = [];
+    const played = 9;
+    let k = 0;
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        let bg = '#111827';
+        if (r === c) bg = 'transparent';
+        else if (c > r) { bg = k < played ? '#7c3aed' : '#1f2937'; k++; }
+        cells.push({ style: 'display: block; aspect-ratio: 1; border-radius: 2px; background: ' + bg + ';' });
+      }
+    }
+    return { matrix: cells };
+  }
+}
+</script>
+</body>
+</html>

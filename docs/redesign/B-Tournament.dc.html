@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Round robin — Seeded</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&amp;family=Geist+Mono:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#030712}
+a{color:#c4b5fd}a:hover{color:#ddd6fe}
+.key{transition:transform 90ms ease, background-color 90ms ease}
+.key:active{transform:scale(0.93);background:#374151 !important}
+.sheet{animation:sheetup 280ms cubic-bezier(.2,.9,.3,1)}
+@keyframes sheetup{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+.settle{animation:settle 500ms ease}
+@keyframes settle{0%{background:rgba(16,185,129,0.22)}100%{background:transparent}}
+.scroll::-webkit-scrollbar{display:none}
+@media (prefers-reduced-motion: reduce){.key,.sheet,.settle{transition:none;animation:none}.key:active{transform:none}}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #030712; color: #ffffff; font-family: 'Geist', ui-sans-serif, system-ui, sans-serif; display: flex; flex-direction: column; position: relative; overflow: hidden">
+
+  <header style="display: flex; align-items: center; gap: 4px; padding: 8px 8px 0; height: 56px; box-sizing: border-box">
+    <button type="button" aria-label="Back to my tournaments" style="width: 44px; height: 44px; border: none; background: transparent; color: #ffffff; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+    </button>
+    <div style="flex: 1; font-size: 16px; font-weight: 600">🏓 Ping Pong Night</div>
+    <button type="button" aria-label="Share" style="width: 44px; height: 44px; border: none; background: transparent; color: #ffffff; display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><path d="m16 6-4-4-4 4"></path><path d="M12 2v13"></path></svg>
+    </button>
+  </header>
+
+  <div style="padding: 14px 28px 0">
+    <div style="position: relative; height: 14px; display: flex; align-items: center; justify-content: space-between">
+      <div style="position: absolute; left: 7px; right: 7px; top: 6px; height: 2px; background: #1f2937"></div>
+      <div style="position: absolute; left: 7px; width: 28%; top: 6px; height: 2px; background: #8b5cf6"></div>
+      <span style="position: relative; width: 14px; height: 14px; border-radius: 50%; background: #7c3aed; box-shadow: 0 0 0 4px rgba(124,58,237,0.25)"></span>
+      <span style="position: relative; width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; background: #030712; border: 2px solid #374151"></span>
+      <span style="position: relative; width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%; background: #030712; border: 2px solid #374151"></span>
+    </div>
+    <div style="display: flex; justify-content: space-between; margin: 8px -14px 0; font-size: 12px">
+      <span style="color: #ffffff; font-weight: 600">Round robin</span>
+      <span style="color: #9ca3af">Bracket</span>
+      <span style="color: #9ca3af">Complete</span>
+    </div>
+  </div>
+
+  <div class="scroll" style="flex: 1; overflow-y: auto; padding: 22px 20px 24px">
+    <div style="font-size: 13px; color: #9ca3af; margin-bottom: 8px">Now playing · match {{matchNo}} of 15</div>
+    <button type="button" onClick="{{openSheet}}" class="{{rowClass}}" style="{{nowStyle}}">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #9ca3af; width: 16px">1</span>
+      <span style="flex: 1; text-align: left; font-size: 17px; font-weight: 600">Dana</span>
+      <span style="font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; color: {{aColor}}">{{aShow}}</span>
+      <span style="color: #6b7280; font-size: 20px">–</span>
+      <span style="font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; color: {{bColor}}">{{bShow}}</span>
+      <span style="flex: 1; text-align: right; font-size: 17px; font-weight: 600">Mike</span>
+      <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #9ca3af; width: 16px; text-align: right">4</span>
+    </button>
+    <div style="font-size: 12px; color: {{statusColor}}; margin-top: 8px; text-align: center">{{statusText}}</div>
+
+    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 32px 0 4px">
+      <h2 style="margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.02em">Standings</h2>
+      <span style="font-size: 12px; color: #9ca3af">Seeds update live</span>
+    </div>
+    <div style="display: flex; height: 32px; align-items: center; font-family: 'Geist Mono', monospace; font-size: 11px; color: #9ca3af; letter-spacing: 0.06em; border-bottom: 1px solid #1f2937">
+      <span style="width: 32px">#</span><span style="flex: 1">PLAYER</span><span style="width: 56px; text-align: right">W–L</span><span style="width: 52px; text-align: right">PTS±</span>
+    </div>
+    <sc-for list="{{standings}}" as="r" hint-placeholder-count="6">
+      <div style="display: flex; align-items: center; height: 50px; border-bottom: 1px solid #111827; font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums">
+        <span style="width: 32px; font-size: 15px; font-weight: 700; color: {{r.seedColor}}">{{r.seed}}</span>
+        <span style="flex: 1; font-family: 'Geist', sans-serif; font-size: 16px">{{r.name}}</span>
+        <span style="width: 56px; text-align: right; font-size: 17px; font-weight: 600">{{r.wl}}</span>
+        <span style="width: 52px; text-align: right; font-size: 14px; color: #9ca3af">{{r.diff}}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="padding: 12px 20px 28px; border-top: 1px solid #1f2937; background: #030712">
+    <button type="button" onClick="{{openSheet}}" style="width: 100%; height: 54px; border: none; border-radius: 12px; background: #7c3aed; color: #ffffff; font-family: inherit; font-size: 16px; font-weight: 600">{{ctaLabel}}</button>
+  </div>
+
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; background: rgba(3,7,18,0.72)">
+      <button type="button" aria-label="Close score entry" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: transparent"></button>
+    </div>
+    <div class="sheet" role="dialog" aria-label="Enter score" style="position: absolute; left: 0; right: 0; bottom: 0; background: #111827; border-top: 1px solid #1f2937; border-radius: 22px 22px 0 0; padding: 10px 16px 28px; box-shadow: 0 -24px 60px -10px rgba(0,0,0,0.7)">
+      <div style="width: 40px; height: 4px; border-radius: 2px; background: #374151; margin: 0 auto 14px"></div>
+      <div style="display: flex; gap: 10px">
+        <button type="button" onClick="{{pickA}}" style="{{fieldAStyle}}">
+          <span style="font-size: 13px; color: #9ca3af">1 · Dana</span>
+          <span style="font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; font-size: 52px; font-weight: 700; letter-spacing: -0.04em; line-height: 1">{{aShow}}</span>
+        </button>
+        <button type="button" onClick="{{pickB}}" style="{{fieldBStyle}}">
+          <span style="font-size: 13px; color: #9ca3af">4 · Mike</span>
+          <span style="font-family: 'Geist Mono', monospace; font-variant-numeric: tabular-nums; font-size: 52px; font-weight: 700; letter-spacing: -0.04em; line-height: 1">{{bShow}}</span>
+        </button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px">
+        <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+          <button type="button" class="key" aria-label="{{k.aria}}" onClick="{{k.press}}" style="{{k.style}}">
+            <sc-if value="{{k.isDel}}" hint-placeholder-val="{{ false }}">
+              <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><path d="m18 9-6 6M12 9l6 6"></path></svg>
+            </sc-if>
+            <sc-if value="{{k.isText}}" hint-placeholder-val="{{ true }}">{{k.label}}</sc-if>
+          </button>
+        </sc-for>
+      </div>
+      <button type="button" onClick="{{lock}}" style="{{lockStyle}}">Lock in <span style="font-family: 'Geist Mono', monospace">{{aShow}}–{{bShow}}</span></button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { a: '11', b: '', active: 'b', sheet: true, locked: false };
+  }
+  renderVals() {
+    const s = this.state;
+    const press = (d) => () => {
+      const cur = this.state[this.state.active];
+      if (cur.length >= 2) return;
+      this.setState({ [this.state.active]: cur === '0' ? d : cur + d });
+    };
+    const del = () => { const k = this.state.active; this.setState({ [k]: this.state[k].slice(0, -1) }); };
+    const keyBase = 'height: 58px; border: none; border-radius: 12px; background: #1f2937; color: #ffffff; font-family: \'Geist Mono\', monospace; font-size: 26px; font-weight: 600; display: flex; align-items: center; justify-content: center;';
+    const keys = ['1','2','3','4','5','6','7','8','9'].map(d => ({ label: d, aria: d, isText: true, isDel: false, press: press(d), style: keyBase }));
+    keys.push({ label: '0', aria: '0', isText: true, isDel: false, press: press('0'), style: keyBase + ' grid-column: 2;' });
+    keys.push({ label: '', aria: 'Delete', isText: false, isDel: true, press: del, style: keyBase + ' background: #111827; border: 1px solid #1f2937;' });
+    const field = (on) => 'flex: 1; height: 104px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #ffffff; font-family: inherit; background: #030712; ' + (on ? 'border: 2px solid #8b5cf6; box-shadow: 0 0 0 4px rgba(124,58,237,0.2), 0 10px 30px -10px rgba(124,58,237,0.6);' : 'border: 2px solid #1f2937;');
+    const ready = s.a !== '' && s.b !== '' && s.a !== s.b;
+    const lockStyle = 'width: 100%; height: 56px; margin-top: 14px; border: none; border-radius: 14px; font-family: inherit; font-size: 17px; font-weight: 600; ' + (ready ? 'background: #7c3aed; color: #ffffff;' : 'background: #1f2937; color: #9ca3af;');
+    const a = parseInt(s.a, 10), b = parseInt(s.b, 10);
+    const nowBase = 'width: 100%; min-height: 72px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: 16px; background: #111827; color: #ffffff; font-family: inherit; ';
+    const nowStyle = s.locked
+      ? nowBase + 'border: 1px solid #065f46; box-shadow: 0 0 0 1px rgba(52,211,153,0.35);'
+      : nowBase + 'border: 1px solid #4c1d95; box-shadow: 0 0 0 1px rgba(124,58,237,0.45), 0 14px 40px -14px rgba(124,58,237,0.7);';
+    return {
+      matchNo: 9,
+      aShow: s.a === '' ? '–' : s.a,
+      bShow: s.b === '' ? '–' : s.b,
+      aColor: s.locked && a < b ? '#9ca3af' : '#ffffff',
+      bColor: s.locked && b < a ? '#9ca3af' : '#ffffff',
+      nowStyle, rowClass: s.locked ? 'settle' : '',
+      statusText: s.locked ? (a > b ? 'Dana' : 'Mike') + ' wins · standings updated' : 'Tap to enter the score',
+      statusColor: s.locked ? '#34d399' : '#9ca3af',
+      ctaLabel: s.locked ? 'Next match' : 'Enter score',
+      sheetOpen: s.sheet,
+      openSheet: () => s.locked ? this.setState({ a: '', b: '', active: 'a', locked: false, sheet: true }) : this.setState({ sheet: true }),
+      closeSheet: () => this.setState({ sheet: false }),
+      pickA: () => this.setState({ active: 'a' }), pickB: () => this.setState({ active: 'b' }),
+      fieldAStyle: field(s.active === 'a'), fieldBStyle: field(s.active === 'b'),
+      keys, lockStyle,
+      lock: () => { if (ready) this.setState({ locked: true, sheet: false }); },
+      standings: [
+        ['Dana', '4–0', '+19'], ['Jess', '3–1', '+9'], ['Ray', '2–2', '+2'], ['Mike', '2–2', '−1'], ['Chris', '1–3', '−11'], ['Tori', '0–4', '−18']
+      ].map((r, i) => ({ seed: i + 1, name: r[0], wl: r[1], diff: r[2], seedColor: i === 0 ? '#facc15' : '#9ca3af' }))
+    };
+  }
+}
+</script>
+</body>
+</html>
