@@ -8,15 +8,7 @@ import { calculateStandings, getTeamDisplayName } from '@/lib/tournament-logic';
 import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-const EVENT_ICONS: Record<string, string> = {
-  'disc-golf-putting': '🥏',
-  'disc-golf': '🥏',
-  'ping-pong': '🏓',
-  basketball: '🏀',
-  volleyball: '🏐',
-  custom: '🏆',
-};
+import { getEventEmoji } from '@/lib/events';
 
 export default function ParticipantView() {
   const params = useParams();
@@ -25,8 +17,11 @@ export default function ParticipantView() {
   const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'teams'>('matches');
 
   useEffect(() => {
+    // localStorage is unavailable during SSR, so the tournament is synced in
+    // after mount rather than read during render.
     const t = getTournamentByShareCode(params.code as string);
     if (!t) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNotFound(true);
       return;
     }
@@ -83,7 +78,7 @@ export default function ParticipantView() {
         {/* Header */}
         <div className="bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{EVENT_ICONS[tournament.event] ?? '🏆'}</span>
+            <span className="text-2xl">{getEventEmoji(tournament.event)}</span>
             <div>
               <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
               <div className="flex items-center gap-2 mt-0.5">

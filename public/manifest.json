@@ -1,0 +1,11 @@
+{
+  "name": "BracketUp",
+  "short_name": "BracketUp",
+  "description": "Run round robin and elimination tournaments from your pocket.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "orientation": "portrait",
+  "icons": []
+}

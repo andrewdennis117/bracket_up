@@ -11,36 +11,20 @@ import { Plus, Trophy, Users, Clock, ChevronRight, Search, Trash2, Download } fr
 import { exportSeasonCSV, exportPlayerSeasonCSV, downloadCSV } from '@/lib/export';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { getEventEmoji } from '@/lib/events';
+import { PHASE_LABELS, PHASE_BADGE_CLASSES } from '@/lib/phases';
 
 // Client-only date component — prevents hydration mismatch from relative times
 function ClientDate({ date }: { date: string }) {
   const [label, setLabel] = useState('');
   useEffect(() => {
+    // Client-only read (Date.now()-relative) — must run post-mount so SSR and
+    // first client render match; see ClientDate's hydration comment above.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLabel(formatDistanceToNow(new Date(date), { addSuffix: true }));
   }, [date]);
   return <span suppressHydrationWarning>{label}</span>;
 }
-
-const EVENT_ICONS: Record<string, string> = {
-  'disc-golf-putting': '🥏',
-  'disc-golf': '🥏',
-  'ping-pong': '🏓',
-  basketball: '🏀',
-  volleyball: '🏐',
-  custom: '🏆',
-};
-
-const PHASE_LABELS: Record<string, string> = {
-  'round-robin': 'In Progress',
-  elimination: 'Elimination',
-  complete: 'Complete',
-};
-
-const PHASE_COLORS: Record<string, string> = {
-  'round-robin': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-  elimination: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  complete: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-};
 
 export default function HomePage() {
   const router = useRouter();
@@ -50,6 +34,9 @@ export default function HomePage() {
   const [joinError, setJoinError] = useState('');
 
   useEffect(() => {
+    // localStorage is unavailable during SSR (tournament-store.ts returns []),
+    // so the real list is synced in after mount rather than read during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTournaments(getAllTournaments());
   }, []);
 
@@ -176,12 +163,12 @@ export default function HomePage() {
                   onKeyDown={(e) => e.key === 'Enter' && router.push(`/tournament/${t.id}`)}
                   className="w-full flex items-center gap-3 p-4 rounded-xl bg-gray-800 border border-gray-700 hover:border-gray-600 hover:bg-gray-800/80 text-left transition-all cursor-pointer"
                 >
-                  <span className="text-2xl">{EVENT_ICONS[t.event] ?? '🏆'}</span>
+                  <span className="text-2xl">{getEventEmoji(t.event)}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-white font-semibold text-sm truncate">{t.name}</p>
-                      <Badge className={cn('text-xs border shrink-0', PHASE_COLORS[t.phase] ?? 'border-gray-700 text-gray-400')}>
-                        {PHASE_LABELS[t.phase] ?? t.phase}
+                      <Badge className={cn('text-xs border shrink-0', PHASE_BADGE_CLASSES[t.phase])}>
+                        {PHASE_LABELS[t.phase]}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3 text-gray-500 text-xs">
