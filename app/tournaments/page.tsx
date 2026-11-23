@@ -20,7 +20,8 @@ import { LogoMark } from '@/components/bracketup/logo-mark';
 import { EventIcon } from '@/components/bracketup/event-icon';
 import { PhaseRail } from '@/components/bracketup/phase-rail';
 import { StickyActionBar } from '@/components/bracketup/sticky-action-bar';
-import { Search, ChevronRight, MoreVertical, Download, Trash2, Trophy } from 'lucide-react';
+import { Search, ChevronRight, MoreVertical, Download, Trash2 } from 'lucide-react';
+import { BracketHero } from '@/components/bracketup/bracket-hero';
 import { exportSeasonCSV, exportPlayerSeasonCSV, downloadCSV } from '@/lib/export';
 import { PHASE_LABELS, PHASE_BADGE_CLASSES } from '@/lib/phases';
 
@@ -96,8 +97,8 @@ export default function TournamentsPage() {
 
           {tournaments.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-card bg-surface">
-                <Trophy className="h-8 w-8 text-fg-muted" />
+              <div className="mb-4 w-[60%] max-w-[210px]">
+                <BracketHero muted />
               </div>
               <p className="mb-1 text-lg font-semibold text-fg">No tournaments yet</p>
               <p className="mb-4 text-sm text-fg-muted">Start one in about a minute. Players join with a code.</p>

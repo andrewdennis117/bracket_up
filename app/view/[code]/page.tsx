@@ -4,18 +4,32 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Tournament } from '@/types/tournament';
 import { getTournamentByShareCode } from '@/lib/tournament-store';
-import { calculateStandings, getTeamDisplayName } from '@/lib/tournament-logic';
+import { calculateStandings, getTeamDisplayName, getPhaseProgress } from '@/lib/tournament-logic';
 import { Badge } from '@/components/ui/badge';
-import { Users, Trophy, Clock, CheckCircle2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { getEventEmoji } from '@/lib/events';
 import { MatchRow } from '@/components/bracketup/match-row';
+import { StandingsTable, type StandingsRow } from '@/components/bracketup/standings-table';
+import { PhaseRail } from '@/components/bracketup/phase-rail';
+import { BracketHero } from '@/components/bracketup/bracket-hero';
+import { JoinCodeInput } from '@/components/bracketup/join-code-input';
+import BracketPhoneView from '@/components/tournament/BracketPhoneView';
+import BracketView from '@/components/tournament/BracketView';
+import ChampionView from '@/components/tournament/ChampionView';
 
+/**
+ * Read-only mirror of the host screens: same PhaseRail, StandingsTable,
+ * MatchRow and bracket layouts, all with no tap-to-score handlers wired up
+ * (BracketView/BracketPhoneView already render non-interactive when
+ * onMatchClick is omitted — see the PR 4 note on that). No "Teams" section —
+ * the host-side round robin screen dropped individual team-roster display
+ * too (see PR 3), so this keeps parity rather than showing participants
+ * something the host view itself doesn't.
+ */
 export default function ParticipantView() {
   const params = useParams();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [activeTab, setActiveTab] = useState<'matches' | 'standings' | 'teams'>('matches');
+  const [retryCode, setRetryCode] = useState('');
 
   useEffect(() => {
     // localStorage is unavailable during SSR, so the tournament is synced in
@@ -31,44 +45,51 @@ export default function ParticipantView() {
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center px-4">
-        <Trophy className="w-12 h-12 text-gray-600 mb-4" />
-        <h1 className="text-xl font-bold mb-2">Tournament Not Found</h1>
-        <p className="text-gray-500 text-sm text-center">
-          Check the share code and try again
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-5 text-center">
+        <div className="mb-6 w-[50%] max-w-[180px]">
+          <BracketHero muted />
+        </div>
+        <h1 className="mb-2 text-xl font-semibold text-fg">We couldn&apos;t find that tournament</h1>
+        <p className="mb-6 text-sm text-fg-muted">Check the share code and try again.</p>
+        <JoinCodeInput
+          value={retryCode}
+          onChange={setRetryCode}
+          onSubmit={() => {
+            if (retryCode.length === 6) window.location.href = `/view/${retryCode}`;
+          }}
+          className="w-full max-w-xs"
+        />
       </div>
     );
   }
 
   if (!tournament) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand border-t-transparent" />
       </div>
     );
   }
 
-  const standings = calculateStandings(tournament.teams, tournament.roundRobinMatches);
   const teamName = (id?: string | null) => {
     if (!id) return 'TBD';
     const team = tournament.teams.find((t) => t.id === id);
     if (!team) return 'TBD';
     return getTeamDisplayName(team, tournament.players);
   };
-
-  // Find next pending match(es)
   const teamSeed = (id?: string | null) => tournament.teams.find((t) => t.id === id)?.seed;
-  // All rounds are shown at once (matching the host view — see
-  // docs/redesign/implementation-plan.md), so "pending" spans every round,
-  // not just currentRound.
-  const pendingMatches =
-    tournament.phase === 'round-robin'
-      ? tournament.roundRobinMatches.filter((m) => m.status !== 'complete')
-      : tournament.eliminationMatches.filter(
-          (m) => m.status !== 'complete' && !m.isBye && m.team1Id && m.team2Id
-        );
-  const rrCompletedCount = tournament.roundRobinMatches.filter((m) => m.status === 'complete').length;
+
+  const standings = calculateStandings(tournament.teams, tournament.roundRobinMatches);
+  const standingsRows: StandingsRow[] = standings.map((s) => ({
+    id: s.teamId,
+    seed: teamSeed(s.teamId) ?? 0,
+    name: teamName(s.teamId),
+    wins: s.wins,
+    losses: s.losses,
+    ties: s.ties,
+    pointDiff: s.pointDiff,
+  }));
+
   const rrRounds = (() => {
     const byRound = new Map<number, typeof tournament.roundRobinMatches>();
     for (const m of tournament.roundRobinMatches) {
@@ -78,89 +99,45 @@ export default function ParticipantView() {
     return Array.from(byRound.entries()).sort(([a], [b]) => a - b);
   })();
 
-  const champion =
-    tournament.phase === 'complete'
-      ? tournament.eliminationMatches.find((m) => m.round === 1)?.winnerId
-      : null;
+  if (tournament.phase === 'complete') {
+    return <ChampionView tournament={tournament} onShare={() => {}} readOnly />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="max-w-lg mx-auto">
-        {/* Header */}
-        <div className="bg-gray-950/95 backdrop-blur border-b border-gray-800 px-4 py-4">
+    <div className="min-h-screen bg-bg text-fg">
+      <div className="mx-auto max-w-lg">
+        <div className="border-b border-line-soft px-4 py-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{getEventEmoji(tournament.event)}</span>
-            <div>
-              <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-gray-500 text-xs flex items-center gap-1">
-                  <Users className="w-3 h-3" /> {tournament.teams.length} teams
-                </span>
-                <span className="text-gray-700">·</span>
-                <span className="text-gray-500 text-xs capitalize">{tournament.format}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-lg font-bold text-fg">{tournament.name}</h1>
+                <Badge variant="outline" className="shrink-0 border-line-strong text-xs text-fg-muted">
+                  View only
+                </Badge>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="px-4 py-5 space-y-5">
-          {/* Champion banner */}
-          {tournament.phase === 'complete' && champion && (
-            <div className="bg-gradient-to-r from-yellow-500/20 to-amber-500/10 border border-yellow-500/40 rounded-2xl p-5 text-center">
-              <Trophy className="w-10 h-10 text-yellow-400 mx-auto mb-2" />
-              <p className="text-yellow-400 text-xs font-semibold uppercase tracking-wider mb-1">🏆 Champion</p>
-              <p className="text-white text-2xl font-bold">{teamName(champion)}</p>
-            </div>
-          )}
+        <div className="space-y-8 px-4 py-5">
+          <PhaseRail phase={tournament.phase} progress={getPhaseProgress(tournament)} />
 
-          {/* Phase badge */}
-          {tournament.phase !== 'complete' && (
-            <div className="flex items-center gap-2">
-              <Badge className={cn(
-                'border text-xs',
-                tournament.phase === 'round-robin'
-                  ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                  : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-              )}>
-                {tournament.phase === 'round-robin'
-                  ? `Round Robin – ${rrCompletedCount}/${tournament.roundRobinMatches.length} matches`
-                  : 'Elimination Bracket'}
-              </Badge>
-            </div>
-          )}
-
-          {/* Tabs */}
-          <div className="flex bg-gray-800/60 rounded-xl p-1 gap-1">
-            {(['matches', 'standings', 'teams'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  'flex-1 py-2 text-sm font-medium rounded-lg transition-all capitalize',
-                  activeTab === tab ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-                )}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Matches tab */}
-          {activeTab === 'matches' && (
-            <div className="space-y-2">
-              {pendingMatches.length === 0 && tournament.phase !== 'complete' && (
-                <div className="text-center py-8 text-gray-600">
-                  <Clock className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">Waiting for next matches...</p>
+          {tournament.phase === 'round-robin' ? (
+            <>
+              <section>
+                <div className="mb-1 flex items-baseline justify-between">
+                  <h2 className="text-lg font-semibold tracking-[-0.02em] text-fg">Standings</h2>
+                  <span className="text-xs text-fg-muted">Seeds update live</span>
                 </div>
-              )}
+                <StandingsTable rows={standingsRows} />
+              </section>
 
-              {tournament.phase === 'round-robin' ? (
-                // All rounds visible at once, read-only — mirrors the host
-                // view (see docs/redesign/implementation-plan.md).
-                rrRounds.map(([round, matches]) => (
+              <section>
+                <h2 className="mb-2 text-lg font-semibold tracking-[-0.02em] text-fg">Matches</h2>
+                {rrRounds.map(([round, matches]) => (
                   <div key={round}>
-                    <p className="mb-2 mt-4 font-mono text-[11px] tracking-wider text-fg-muted first:mt-0">
+                    <p className="mb-2 mt-5 font-mono text-[11px] tracking-wider text-fg-muted first:mt-0">
                       ROUND {round}
                     </p>
                     {matches.map((match) => {
@@ -174,132 +151,28 @@ export default function ParticipantView() {
                         <MatchRow
                           key={match.id}
                           state={match.status === 'complete' ? 'final' : 'upcoming'}
-                          team1={{
-                            seed: teamSeed(match.team1Id),
-                            name: teamName(match.team1Id),
-                            score: match.team1Score,
-                          }}
-                          team2={{
-                            seed: teamSeed(match.team2Id),
-                            name: teamName(match.team2Id),
-                            score: match.team2Score,
-                          }}
+                          team1={{ seed: teamSeed(match.team1Id), name: teamName(match.team1Id), score: match.team1Score }}
+                          team2={{ seed: teamSeed(match.team2Id), name: teamName(match.team2Id), score: match.team2Score }}
                           winner={winner}
                         />
                       );
                     })}
                   </div>
-                ))
-              ) : (
-                <>
-                  {tournament.eliminationMatches
-                    .filter((m) => !m.isBye)
-                    .map((match) => {
-                      const done = match.status === 'complete';
-                      const t1 = teamName(match.team1Id);
-                      const t2 = teamName(match.team2Id);
-
-                      return (
-                        <div
-                          key={match.id}
-                          className={cn(
-                            'p-4 rounded-xl border',
-                            done ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-800 border-gray-700'
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-white')}>
-                                {t1}
-                              </p>
-                            </div>
-                            <div className="shrink-0">
-                              {done ? (
-                                <div className="flex items-center gap-1.5">
-                                  <span className={cn('text-base font-bold', match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-gray-400')}>
-                                    {match.team1Score}
-                                  </span>
-                                  <span className="text-gray-600">–</span>
-                                  <span className={cn('text-base font-bold', match.winnerId === match.team2Id ? 'text-emerald-400' : 'text-gray-400')}>
-                                    {match.team2Score}
-                                  </span>
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-1" />
-                                </div>
-                              ) : (
-                                <span className="text-gray-600 text-xs">vs</span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0 text-right">
-                              <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team2Id ? 'text-emerald-400' : match.team2Id ? 'text-white' : 'text-gray-500')}>
-                                {t2}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </>
-              )}
-            </div>
+                ))}
+              </section>
+            </>
+          ) : (
+            <section>
+              <div className="md:hidden">
+                <BracketPhoneView tournament={tournament} />
+              </div>
+              <div className="hidden md:block">
+                <BracketView tournament={tournament} />
+              </div>
+            </section>
           )}
 
-          {/* Standings tab */}
-          {activeTab === 'standings' && (
-            <div className="space-y-2">
-              {standings.map((s, i) => {
-                const team = tournament.teams.find((t) => t.id === s.teamId)!;
-                const gamesPlayed = s.wins + s.losses + s.ties;
-                return (
-                  <div
-                    key={s.teamId}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-xl border',
-                      i === 0 ? 'bg-yellow-500/10 border-yellow-500/30' :
-                      i === 1 ? 'bg-gray-400/10 border-gray-500/30' :
-                      'bg-gray-800 border-gray-700'
-                    )}
-                  >
-                    <span className={cn('text-sm font-bold w-5', i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : 'text-gray-500')}>
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white font-medium text-sm truncate">
-                        {getTeamDisplayName(team, tournament.players)}
-                      </p>
-                      <p className="text-gray-500 text-xs">
-                        {gamesPlayed} played · {s.pointDiff >= 0 ? '+' : ''}{s.pointDiff} diff
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold text-sm">{s.wins}W–{s.losses}L</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Teams tab */}
-          {activeTab === 'teams' && (
-            <div className="space-y-2">
-              {tournament.teams.map((team, i) => (
-                <div key={team.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-800 border border-gray-700">
-                  <span className="text-gray-500 text-sm w-5 text-right">{i + 1}</span>
-                  <div className="flex-1">
-                    <p className="text-white font-medium text-sm">{getTeamDisplayName(team, tournament.players)}</p>
-                    <p className="text-gray-600 text-xs mt-0.5">
-                      {team.playerIds.map((pid) => tournament.players.find((p) => p.id === pid)?.name).filter(Boolean).join(' & ')}
-                    </p>
-                  </div>
-                  {team.seed && (
-                    <Badge variant="outline" className="border-gray-600 text-gray-400 text-xs">
-                      Seed #{team.seed}
-                    </Badge>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="py-2 text-center text-xs text-fg-muted">Updates automatically</p>
         </div>
       </div>
     </div>

@@ -101,6 +101,7 @@
      see components/bracketup/). */
   --animate-settle: settle var(--duration-settle) ease;
   --animate-sheet-up: sheet-up var(--duration-sheet) var(--ease-out-soft);
+  --animate-draw: draw var(--duration-draw) var(--ease-draw) 300ms forwards;
 }
 
 @keyframes settle {
@@ -111,6 +112,10 @@
 @keyframes sheet-up {
   from { transform: translateY(40%); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
 }
 
 /*
