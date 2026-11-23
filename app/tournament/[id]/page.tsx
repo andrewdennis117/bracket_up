@@ -9,28 +9,9 @@ import EliminationView from '@/components/tournament/EliminationView';
 import ShareSheet from '@/components/tournament/ShareSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Share2, ChevronLeft, Users, Trophy, Disc } from 'lucide-react';
-
-const EVENT_ICONS: Record<string, string> = {
-  'disc-golf-putting': '🥏',
-  'disc-golf': '🥏',
-  'ping-pong': '🏓',
-  basketball: '🏀',
-  volleyball: '🏐',
-  custom: '🏆',
-};
-
-const PHASE_LABELS: Record<string, string> = {
-  'round-robin': 'Round Robin',
-  elimination: 'Elimination',
-  complete: 'Complete',
-};
-
-const PHASE_COLORS: Record<string, string> = {
-  'round-robin': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
-  elimination: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  complete: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-};
+import { Share2, ChevronLeft, Users } from 'lucide-react';
+import { getEventEmoji } from '@/lib/events';
+import { PHASE_LABELS, PHASE_BADGE_CLASSES } from '@/lib/phases';
 
 export default function TournamentPage() {
   const params = useParams();
@@ -39,11 +20,14 @@ export default function TournamentPage() {
   const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => {
+    // localStorage is unavailable during SSR, so the tournament is synced in
+    // after mount rather than read during render.
     const t = getTournament(params.id as string);
     if (!t) {
       router.push('/');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTournament(t);
   }, [params.id, router]);
 
@@ -80,7 +64,7 @@ export default function TournamentPage() {
             </button>
             <div className="flex-1 mx-3 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-lg">{EVENT_ICONS[tournament.event] ?? '🏆'}</span>
+                <span className="text-lg">{getEventEmoji(tournament.event)}</span>
                 <h1 className="text-base font-bold text-white truncate">{tournament.name}</h1>
               </div>
             </div>
@@ -97,8 +81,8 @@ export default function TournamentPage() {
 
           {/* Meta row */}
           <div className="flex items-center gap-2 mt-2 ml-1">
-            <Badge className={`text-xs border ${PHASE_COLORS[tournament.phase] ?? 'border-gray-700 text-gray-400'}`}>
-              {PHASE_LABELS[tournament.phase] ?? tournament.phase}
+            <Badge className={`text-xs border ${PHASE_BADGE_CLASSES[tournament.phase]}`}>
+              {PHASE_LABELS[tournament.phase]}
             </Badge>
             <span className="text-gray-600 text-xs flex items-center gap-1">
               <Users className="w-3 h-3" /> {tournament.teams.length} teams
