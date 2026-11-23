@@ -21,6 +21,9 @@ import { Download, Share2 } from 'lucide-react';
 interface ChampionViewProps {
   tournament: Tournament;
   onShare: () => void;
+  /** Hides the Share results / Export CSV sticky bar — the participant
+   *  view's "champion screen without the sticky bar's host actions". */
+  readOnly?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -36,7 +39,7 @@ function getInitials(name: string): string {
  * model only tracks champion/runner-up with certainty beyond that, and the
  * spec doesn't describe how the rest of the field should be ranked.
  */
-export default function ChampionView({ tournament, onShare }: ChampionViewProps) {
+export default function ChampionView({ tournament, onShare, readOnly = false }: ChampionViewProps) {
   const finalsMatch = tournament.eliminationMatches.find((m) => m.round === 1);
   const championId = finalsMatch?.winnerId;
   const runnerUpId = championId
@@ -105,7 +108,7 @@ export default function ChampionView({ tournament, onShare }: ChampionViewProps)
   if (!championId) return null;
 
   return (
-    <div className="space-y-8 pb-28">
+    <div className={cn('space-y-8', !readOnly && 'pb-28')}>
       {/* Podium */}
       <section className="pt-2 text-center">
         <span className="text-[40px]" aria-hidden="true">
@@ -188,16 +191,18 @@ export default function ChampionView({ tournament, onShare }: ChampionViewProps)
         </div>
       </details>
 
-      <StickyActionBar>
-        <Button size="cta" className="flex-1 gap-2" onClick={onShare}>
-          <Share2 className="h-4 w-4" />
-          Share results
-        </Button>
-        <Button size="cta" variant="secondary" className="gap-2" onClick={handleExport}>
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
-      </StickyActionBar>
+      {!readOnly && (
+        <StickyActionBar>
+          <Button size="cta" className="flex-1 gap-2" onClick={onShare}>
+            <Share2 className="h-4 w-4" />
+            Share results
+          </Button>
+          <Button size="cta" variant="secondary" className="gap-2" onClick={handleExport}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </StickyActionBar>
+      )}
     </div>
   );
 }
