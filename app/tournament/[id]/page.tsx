@@ -119,7 +119,7 @@ export default function TournamentPage() {
             <RoundRobinView tournament={tournament} onUpdate={handleUpdate} />
           )}
           {(tournament.phase === 'elimination' || tournament.phase === 'complete') && (
-            <EliminationView tournament={tournament} onUpdate={handleUpdate} />
+            <EliminationView tournament={tournament} onUpdate={handleUpdate} onShare={() => setShareOpen(true)} />
           )}
         </div>
       </div>

@@ -340,3 +340,33 @@ export function isRoundRobinRoundComplete(
 export function getAllRoundsComplete(matches: RoundRobinMatch[]): boolean {
   return matches.length > 0 && matches.every((m) => m.status === 'complete');
 }
+
+/**
+ * Canonical elimination-round label (round 1 = Finals, counting from the
+ * end — see EliminationMatch.round). Single source of truth replacing three
+ * previously-independent, inconsistent naming schemes across BracketView's
+ * column headers, the old list view, and the round tabs.
+ */
+export function getEliminationRoundLabel(round: number): string {
+  if (round === 1) return 'Final';
+  if (round === 2) return 'Semis';
+  if (round === 3) return 'Quarters';
+  return `Round of ${Math.pow(2, round)}`;
+}
+
+/**
+ * IDs of the matches a given team actually won on its way to (or through)
+ * the bracket — walking backward from the Finals via nextMatchId, since
+ * matches don't store a "previous match" pointer directly. Used to render
+ * the champion's specific path in gold on the read-only champion-screen
+ * bracket, distinct from the bracket's normal amber advancing-path color.
+ */
+export function getTeamPathMatchIds(matches: EliminationMatch[], teamId: string): Set<string> {
+  const pathIds = new Set<string>();
+  let current = matches.find((m) => m.round === 1);
+  while (current && current.winnerId === teamId) {
+    pathIds.add(current.id);
+    current = matches.find((m) => m.nextMatchId === current!.id && m.winnerId === teamId);
+  }
+  return pathIds;
+}

@@ -6,6 +6,8 @@ import {
   randomPairPlayers,
   getTeamDisplayName,
   getAllRoundsComplete,
+  getEliminationRoundLabel,
+  getTeamPathMatchIds,
 } from '@/lib/tournament-logic';
 import { Player, Team, RoundRobinMatch } from '@/types/tournament';
 
@@ -367,5 +369,58 @@ describe('getAllRoundsComplete', () => {
       completeMatch(m, 10, 5)
     );
     expect(getAllRoundsComplete(matches)).toBe(true);
+  });
+});
+
+describe('getTeamPathMatchIds', () => {
+  test('includes only the matches a team actually won, walking back to round 1', () => {
+    const teams = makeTeams(4).map((t, i) => ({ ...t, seed: i + 1 }));
+    const matches = generateEliminationBracket(teams);
+
+    const semis = matches.filter((m) => m.round === 2);
+    const final = matches.find((m) => m.round === 1)!;
+    const [semiA, semiB] = semis;
+
+    // Seed 1 (team-1) wins their semi, then wins the final.
+    const completed = matches.map((m) => {
+      if (m.id === semiA.id) return { ...m, status: 'complete' as const, winnerId: semiA.team1Id };
+      if (m.id === semiB.id) return { ...m, status: 'complete' as const, winnerId: semiB.team1Id };
+      return m;
+    });
+    const champion = semiA.team1Id!;
+    const finalWithWinner = { ...final, status: 'complete' as const, winnerId: champion };
+    const withFinal = completed.map((m) => (m.id === final.id ? finalWithWinner : m));
+
+    const path = getTeamPathMatchIds(withFinal, champion);
+
+    expect(path.has(final.id)).toBe(true);
+    expect(path.has(semiA.id)).toBe(true);
+    expect(path.has(semiB.id)).toBe(false);
+    expect(path.size).toBe(2);
+  });
+
+  test('returns an empty set for a team that never reached or won the final', () => {
+    const teams = makeTeams(4).map((t, i) => ({ ...t, seed: i + 1 }));
+    const matches = generateEliminationBracket(teams);
+    const path = getTeamPathMatchIds(matches, 'some-team-that-lost-early');
+    expect(path.size).toBe(0);
+  });
+});
+
+describe('getEliminationRoundLabel', () => {
+  test('round 1 is Final', () => {
+    expect(getEliminationRoundLabel(1)).toBe('Final');
+  });
+  test('round 2 is Semis', () => {
+    expect(getEliminationRoundLabel(2)).toBe('Semis');
+  });
+  test('round 3 is Quarters', () => {
+    expect(getEliminationRoundLabel(3)).toBe('Quarters');
+  });
+  test('round 4 is Round of 16', () => {
+    expect(getEliminationRoundLabel(4)).toBe('Round of 16');
+  });
+  test('round 5 is Round of 32', () => {
+    expect(getEliminationRoundLabel(5)).toBe('Round of 32');
   });
 });

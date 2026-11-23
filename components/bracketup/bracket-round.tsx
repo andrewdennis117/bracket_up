@@ -16,6 +16,9 @@ export interface BracketRoundMatch {
   onClick?: () => void;
   /** Short caption under the box, e.g. "→ Semi 1". Omit for the final round. */
   advancesTo?: string;
+  /** Renders the advancesTo caption gold instead of the round's accent —
+   *  the champion screen's "champion path in gold" on a single match. */
+  highlight?: boolean;
 }
 
 interface BracketRoundProps {
@@ -42,7 +45,7 @@ export function BracketRound({ matches, accent = 'brand', className }: BracketRo
 }
 
 function BracketMatchBox({ match, accent }: { match: BracketRoundMatch; accent: 'brand' | 'elim' }) {
-  const { team1, team2, winner, isBye, onClick, advancesTo } = match;
+  const { team1, team2, winner, isBye, onClick, advancesTo, highlight } = match;
 
   if (isBye) {
     return (
@@ -68,7 +71,12 @@ function BracketMatchBox({ match, accent }: { match: BracketRoundMatch; accent: 
         <BracketSideRow side={team2} isWinner={winner === 'team2'} isLoser={winner === 'team1'} />
       </button>
       {advancesTo && (
-        <p className={cn('mt-1 text-right text-xs', accent === 'elim' ? 'text-elim-fg' : 'text-brand-soft')}>
+        <p
+          className={cn(
+            'mt-1 text-right text-xs',
+            highlight ? 'text-gold' : accent === 'elim' ? 'text-elim-fg' : 'text-brand-soft'
+          )}
+        >
           → {advancesTo}
         </p>
       )}
