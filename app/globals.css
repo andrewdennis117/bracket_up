@@ -95,6 +95,22 @@
   --duration-settle: 500ms;
   --duration-advance: 450ms;
   --duration-draw: 1400ms;
+
+  /* Named animations, composed from the duration/easing tokens above.
+     Keyframes are declared below (added alongside their first consumer —
+     see components/bracketup/). */
+  --animate-settle: settle var(--duration-settle) ease;
+  --animate-sheet-up: sheet-up var(--duration-sheet) var(--ease-out-soft);
+}
+
+@keyframes settle {
+  from { background-color: oklch(76.5% 0.177 163 / 0.22); }
+  to { background-color: transparent; }
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(40%); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
 /*
