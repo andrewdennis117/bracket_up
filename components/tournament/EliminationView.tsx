@@ -3,19 +3,26 @@
 import { useState } from 'react';
 import { Tournament, EliminationMatch } from '@/types/tournament';
 import { ScoreSheet } from '@/components/bracketup/score-sheet';
-import { getTeamDisplayName, calculatePayouts } from '@/lib/tournament-logic';
+import { getTeamDisplayName } from '@/lib/tournament-logic';
 import BracketView from './BracketView';
-import { Trophy, DollarSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import BracketPhoneView from './BracketPhoneView';
+import ChampionView from './ChampionView';
 
 interface EliminationViewProps {
   tournament: Tournament;
   onUpdate: (t: Partial<Tournament>) => void;
+  /** Opens the host's ShareSheet — ChampionView's "Share results" uses this. */
+  onShare: () => void;
 }
 
-export default function EliminationView({ tournament, onUpdate }: EliminationViewProps) {
+/**
+ * Round tabs + mini-map on phones, a full multi-column bracket at md+ — both
+ * rendered from the same data, toggled by breakpoint via Tailwind classes
+ * rather than a user-facing view switcher (the old bracket/list toggle is
+ * retired; round tabs supersede what the list view was for).
+ */
+export default function EliminationView({ tournament, onUpdate, onShare }: EliminationViewProps) {
   const [selectedMatch, setSelectedMatch] = useState<EliminationMatch | null>(null);
-  const [view, setView] = useState<'bracket' | 'list'>('bracket');
 
   const teamName = (id?: string | null) => {
     if (!id) return 'TBD';
@@ -63,183 +70,18 @@ export default function EliminationView({ tournament, onUpdate }: EliminationVie
     setSelectedMatch(null);
   };
 
-  const finalsMatch = tournament.eliminationMatches.find((m) => m.round === 1);
-  const champion = finalsMatch?.winnerId;
-  const runnerUp = champion
-    ? champion === finalsMatch?.team1Id ? finalsMatch?.team2Id : finalsMatch?.team1Id
-    : undefined;
-
-  const payouts =
-    champion && runnerUp && tournament.entryFeePerPlayer > 0
-      ? calculatePayouts(
-          tournament.teams,
-          tournament.entryFeePerPlayer,
-          tournament.prizeSplit.firstPercent,
-          tournament.prizeSplit.secondPercent,
-          champion,
-          runnerUp
-        )
-      : [];
-
-  const fmt = (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
-
-  // List view: group by round for alternative display
-  const maxRound = Math.max(...tournament.eliminationMatches.map((m) => m.round), 1);
-  const ROUND_LABELS: Record<number, string> = { 1: 'Finals', 2: 'Semifinals', 3: 'Quarterfinals', 4: 'Round of 16' };
-  const rounds = Array.from({ length: maxRound }, (_, i) => maxRound - i);
+  if (tournament.phase === 'complete') {
+    return <ChampionView tournament={tournament} onShare={onShare} />;
+  }
 
   return (
     <div className="space-y-5">
-      {/* Champion banner */}
-      {tournament.phase === 'complete' && champion && (
-        <div className="bg-gradient-to-r from-yellow-500/20 to-amber-500/10 border border-yellow-500/40 rounded-2xl p-5 text-center">
-          <Trophy className="w-10 h-10 text-yellow-400 mx-auto mb-2" />
-          <p className="text-yellow-400 text-xs font-semibold uppercase tracking-wider mb-1">Champion</p>
-          <p className="text-white text-xl font-bold">{teamName(champion)}</p>
-          {runnerUp && (
-            <p className="text-gray-400 text-sm mt-1">🥈 Runner-up: {teamName(runnerUp)}</p>
-          )}
-        </div>
-      )}
-
-      {/* Prize payouts */}
-      {payouts.length > 0 && (
-        <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-            <p className="text-sm font-semibold text-gray-300">Prize Payouts</p>
-            <span className="text-gray-500 text-xs ml-auto">
-              Pot: {fmt(tournament.entryFeePerPlayer * tournament.players.length)}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {payouts.map((p) => (
-              <div key={p.place} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span>{p.place === 1 ? '🥇' : '🥈'}</span>
-                  <span className="text-white text-sm font-medium">{teamName(p.teamId)}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-emerald-400 font-bold text-sm">{fmt(p.teamAmount)}</p>
-                  {p.playerIds.length > 1 && (
-                    <p className="text-gray-500 text-xs">{fmt(p.perPlayerAmount)} / player</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* View toggle */}
-      <div className="flex bg-gray-800/60 rounded-xl p-1 gap-1">
-        {(['bracket', 'list'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={cn(
-              'flex-1 py-2 text-sm font-medium rounded-lg transition-all capitalize',
-              view === v ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'
-            )}
-          >
-            {v === 'bracket' ? '🏆 Bracket' : '☰ List'}
-          </button>
-        ))}
+      <div className="md:hidden">
+        <BracketPhoneView tournament={tournament} onMatchClick={openScoreDialog} />
       </div>
-
-      {/* Bracket view */}
-      {view === 'bracket' && (
-        <BracketView
-          tournament={tournament}
-          onMatchClick={openScoreDialog}
-        />
-      )}
-
-      {/* List view */}
-      {view === 'list' && (
-        <div className="space-y-5">
-          {rounds.map((round) => {
-            const roundMatches = tournament.eliminationMatches
-              .filter((m) => m.round === round)
-              .sort((a, b) => a.position - b.position);
-            const label = ROUND_LABELS[round] ?? `Round of ${Math.pow(2, round)}`;
-
-            return (
-              <div key={round}>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  {label}
-                </p>
-                <div className="space-y-2">
-                  {roundMatches.map((match) => {
-                    const done = match.status === 'complete';
-                    const isBye = match.isBye;
-                    const canPlay = !!match.team1Id && !!match.team2Id && !isBye;
-
-                    return (
-                      <button
-                        key={match.id}
-                        onClick={() => canPlay && openScoreDialog(match)}
-                        className={cn(
-                          'w-full p-4 rounded-xl border text-left transition-all',
-                          isBye ? 'opacity-30 cursor-default bg-gray-900 border-gray-800' :
-                          done ? 'bg-gray-800/40 border-gray-700/50' :
-                          canPlay ? 'bg-gray-800 border-gray-700 hover:border-violet-500/50' :
-                          'bg-gray-800/40 border-gray-700/40 cursor-default'
-                        )}
-                      >
-                        {isBye ? (
-                          <p className="text-gray-600 text-sm text-center">BYE</p>
-                        ) : (
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                {tournament.teams.find(t => t.id === match.team1Id)?.seed && (
-                                  <span className="text-gray-600 text-xs">#{tournament.teams.find(t => t.id === match.team1Id)?.seed}</span>
-                                )}
-                                <p className={cn('font-semibold text-sm truncate',
-                                  done && match.winnerId === match.team1Id ? 'text-emerald-400' :
-                                  match.team1Id ? 'text-white' : 'text-gray-600 italic'
-                                )}>
-                                  {teamName(match.team1Id)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="shrink-0">
-                              {done ? (
-                                <div className="flex items-center gap-1">
-                                  <span className={cn('text-lg font-bold', match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-gray-400')}>{match.team1Score}</span>
-                                  <span className="text-gray-600">–</span>
-                                  <span className={cn('text-lg font-bold', match.winnerId === match.team2Id ? 'text-emerald-400' : 'text-gray-400')}>{match.team2Score}</span>
-                                </div>
-                              ) : (
-                                <span className="text-gray-600 text-xs font-bold">vs</span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <p className={cn('font-semibold text-sm truncate',
-                                  done && match.winnerId === match.team2Id ? 'text-emerald-400' :
-                                  match.team2Id ? 'text-white' : 'text-gray-600 italic'
-                                )}>
-                                  {teamName(match.team2Id)}
-                                </p>
-                                {tournament.teams.find(t => t.id === match.team2Id)?.seed && (
-                                  <span className="text-gray-600 text-xs">#{tournament.teams.find(t => t.id === match.team2Id)?.seed}</span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <div className="hidden md:block">
+        <BracketView tournament={tournament} onMatchClick={openScoreDialog} />
+      </div>
 
       {/* Score entry — ties are never allowed in elimination (allowTies defaults to false) */}
       <ScoreSheet

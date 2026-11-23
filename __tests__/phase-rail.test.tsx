@@ -46,6 +46,14 @@ describe('PhaseRail', () => {
     expect(getByText('Complete')).toHaveClass('font-semibold', 'text-fg');
   });
 
+  it('renders the Bracket node amber (not brand) while elimination is current', () => {
+    const { container } = render(<PhaseRail phase="elimination" progress={0.2} />);
+    const nodes = container.querySelectorAll('.rounded-full');
+    // index 0 = Round robin (done/emerald), index 1 = Bracket (current/amber), index 2 = Complete (future)
+    expect(nodes[1]).toHaveClass('bg-elim');
+    expect(nodes[1]).not.toHaveClass('bg-brand');
+  });
+
   it('renders no node circles or labels in compact mode', () => {
     const { container, queryByText } = render(<PhaseRail phase="round-robin" progress={0.5} compact />);
     expect(container.querySelectorAll('.rounded-full.bg-done, .rounded-full.bg-brand').length).toBe(0);

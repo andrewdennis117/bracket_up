@@ -84,9 +84,16 @@ function PhaseNode({ index, currentIndex }: { index: number; currentIndex: numbe
   const isDone = index < currentIndex;
   const isCurrent = index === currentIndex;
   const isTerminal = index === 2;
+  const isBracket = index === 1;
 
   if (isDone || (isCurrent && isTerminal)) {
     return <span className="relative z-10 h-3.5 w-3.5 rounded-full bg-done" />;
+  }
+  // The bracket screen spec calls this out specifically: "PhaseRail Bracket
+  // node is amber" — a per-screen override of the generic brand/glow rule
+  // below, not applied to any other node.
+  if (isCurrent && isBracket) {
+    return <span className="relative z-10 h-3.5 w-3.5 rounded-full bg-elim" />;
   }
   if (isCurrent) {
     return <span className="relative z-10 h-3.5 w-3.5 rounded-full bg-brand shadow-node" />;
