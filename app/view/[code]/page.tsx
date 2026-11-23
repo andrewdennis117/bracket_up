@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Users, Trophy, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getEventEmoji } from '@/lib/events';
+import { MatchRow } from '@/components/bracketup/match-row';
 
 export default function ParticipantView() {
   const params = useParams();
@@ -57,15 +58,25 @@ export default function ParticipantView() {
   };
 
   // Find next pending match(es)
-  const currentRound = tournament.currentRound ?? 1;
+  const teamSeed = (id?: string | null) => tournament.teams.find((t) => t.id === id)?.seed;
+  // All rounds are shown at once (matching the host view — see
+  // docs/redesign/implementation-plan.md), so "pending" spans every round,
+  // not just currentRound.
   const pendingMatches =
     tournament.phase === 'round-robin'
-      ? tournament.roundRobinMatches.filter(
-          (m) => m.round === currentRound && m.status !== 'complete'
-        )
+      ? tournament.roundRobinMatches.filter((m) => m.status !== 'complete')
       : tournament.eliminationMatches.filter(
           (m) => m.status !== 'complete' && !m.isBye && m.team1Id && m.team2Id
         );
+  const rrCompletedCount = tournament.roundRobinMatches.filter((m) => m.status === 'complete').length;
+  const rrRounds = (() => {
+    const byRound = new Map<number, typeof tournament.roundRobinMatches>();
+    for (const m of tournament.roundRobinMatches) {
+      if (!byRound.has(m.round)) byRound.set(m.round, []);
+      byRound.get(m.round)!.push(m);
+    }
+    return Array.from(byRound.entries()).sort(([a], [b]) => a - b);
+  })();
 
   const champion =
     tournament.phase === 'complete'
@@ -111,7 +122,9 @@ export default function ParticipantView() {
                   ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
                   : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
               )}>
-                {tournament.phase === 'round-robin' ? `Round Robin – Round ${currentRound}/${tournament.totalRounds}` : 'Elimination Bracket'}
+                {tournament.phase === 'round-robin'
+                  ? `Round Robin – ${rrCompletedCount}/${tournament.roundRobinMatches.length} matches`
+                  : 'Elimination Bracket'}
               </Badge>
             </div>
           )}
@@ -141,54 +154,92 @@ export default function ParticipantView() {
                   <p className="text-sm">Waiting for next matches...</p>
                 </div>
               )}
-              {(tournament.phase === 'round-robin'
-                ? tournament.roundRobinMatches.filter((m) => m.round === currentRound)
-                : tournament.eliminationMatches.filter((m) => !m.isBye)
-              ).map((match) => {
-                const done = match.status === 'complete';
-                const rrMatch = 'team1Id' in match;
-                const t1 = teamName(match.team1Id);
-                const t2 = teamName(match.team2Id);
 
-                return (
-                  <div
-                    key={match.id}
-                    className={cn(
-                      'p-4 rounded-xl border',
-                      done ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-800 border-gray-700'
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-white')}>
-                          {t1}
-                        </p>
-                      </div>
-                      <div className="shrink-0">
-                        {done ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className={cn('text-base font-bold', match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-gray-400')}>
-                              {match.team1Score}
-                            </span>
-                            <span className="text-gray-600">–</span>
-                            <span className={cn('text-base font-bold', match.winnerId === match.team2Id ? 'text-emerald-400' : 'text-gray-400')}>
-                              {match.team2Score}
-                            </span>
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-1" />
-                          </div>
-                        ) : (
-                          <span className="text-gray-600 text-xs">vs</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0 text-right">
-                        <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team2Id ? 'text-emerald-400' : match.team2Id ? 'text-white' : 'text-gray-500')}>
-                          {t2}
-                        </p>
-                      </div>
-                    </div>
+              {tournament.phase === 'round-robin' ? (
+                // All rounds visible at once, read-only — mirrors the host
+                // view (see docs/redesign/implementation-plan.md).
+                rrRounds.map(([round, matches]) => (
+                  <div key={round}>
+                    <p className="mb-2 mt-4 font-mono text-[11px] tracking-wider text-fg-muted first:mt-0">
+                      ROUND {round}
+                    </p>
+                    {matches.map((match) => {
+                      const winner =
+                        match.winnerId === match.team1Id
+                          ? 'team1'
+                          : match.winnerId === match.team2Id
+                            ? 'team2'
+                            : null;
+                      return (
+                        <MatchRow
+                          key={match.id}
+                          state={match.status === 'complete' ? 'final' : 'upcoming'}
+                          team1={{
+                            seed: teamSeed(match.team1Id),
+                            name: teamName(match.team1Id),
+                            score: match.team1Score,
+                          }}
+                          team2={{
+                            seed: teamSeed(match.team2Id),
+                            name: teamName(match.team2Id),
+                            score: match.team2Score,
+                          }}
+                          winner={winner}
+                        />
+                      );
+                    })}
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                <>
+                  {tournament.eliminationMatches
+                    .filter((m) => !m.isBye)
+                    .map((match) => {
+                      const done = match.status === 'complete';
+                      const t1 = teamName(match.team1Id);
+                      const t2 = teamName(match.team2Id);
+
+                      return (
+                        <div
+                          key={match.id}
+                          className={cn(
+                            'p-4 rounded-xl border',
+                            done ? 'bg-gray-800/40 border-gray-700/50' : 'bg-gray-800 border-gray-700'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-white')}>
+                                {t1}
+                              </p>
+                            </div>
+                            <div className="shrink-0">
+                              {done ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className={cn('text-base font-bold', match.winnerId === match.team1Id ? 'text-emerald-400' : 'text-gray-400')}>
+                                    {match.team1Score}
+                                  </span>
+                                  <span className="text-gray-600">–</span>
+                                  <span className={cn('text-base font-bold', match.winnerId === match.team2Id ? 'text-emerald-400' : 'text-gray-400')}>
+                                    {match.team2Score}
+                                  </span>
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-1" />
+                                </div>
+                              ) : (
+                                <span className="text-gray-600 text-xs">vs</span>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 text-right">
+                              <p className={cn('font-semibold text-sm truncate', done && match.winnerId === match.team2Id ? 'text-emerald-400' : match.team2Id ? 'text-white' : 'text-gray-500')}>
+                                {t2}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </>
+              )}
             </div>
           )}
 

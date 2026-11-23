@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { Tournament, EliminationMatch } from '@/types/tournament';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScoreSheet } from '@/components/bracketup/score-sheet';
 import { getTeamDisplayName, calculatePayouts } from '@/lib/tournament-logic';
 import BracketView from './BracketView';
 import { Trophy, DollarSign } from 'lucide-react';
@@ -18,8 +15,6 @@ interface EliminationViewProps {
 
 export default function EliminationView({ tournament, onUpdate }: EliminationViewProps) {
   const [selectedMatch, setSelectedMatch] = useState<EliminationMatch | null>(null);
-  const [score1, setScore1] = useState('');
-  const [score2, setScore2] = useState('');
   const [view, setView] = useState<'bracket' | 'list'>('bracket');
 
   const teamName = (id?: string | null) => {
@@ -31,16 +26,10 @@ export default function EliminationView({ tournament, onUpdate }: EliminationVie
 
   const openScoreDialog = (match: EliminationMatch) => {
     setSelectedMatch(match);
-    setScore1(match.team1Score?.toString() ?? '');
-    setScore2(match.team2Score?.toString() ?? '');
   };
 
-  const submitScore = () => {
+  const submitScore = (s1: number, s2: number) => {
     if (!selectedMatch) return;
-    const s1 = parseInt(score1);
-    const s2 = parseInt(score2);
-    if (isNaN(s1) || isNaN(s2) || s1 === s2) return;
-
     const winnerId = s1 > s2 ? selectedMatch.team1Id! : selectedMatch.team2Id!;
 
     let updatedMatches = tournament.eliminationMatches.map((m) =>
@@ -252,39 +241,30 @@ export default function EliminationView({ tournament, onUpdate }: EliminationVie
         </div>
       )}
 
-      {/* Score dialog */}
-      <Dialog open={!!selectedMatch} onOpenChange={() => setSelectedMatch(null)}>
-        <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-sm mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-white">Enter Score</DialogTitle>
-          </DialogHeader>
-          {selectedMatch && (
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-gray-300 flex-1 truncate">{teamName(selectedMatch.team1Id)}</p>
-                  <Input type="number" min={0} value={score1} onChange={(e) => setScore1(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white h-11 text-center text-lg font-bold w-20" placeholder="0" autoFocus />
-                </div>
-                <Separator className="bg-gray-700" />
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-gray-300 flex-1 truncate">{teamName(selectedMatch.team2Id)}</p>
-                  <Input type="number" min={0} value={score2} onChange={(e) => setScore2(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white h-11 text-center text-lg font-bold w-20" placeholder="0" />
-                </div>
-              </div>
-              {score1 !== '' && score2 !== '' && score1 === score2 && (
-                <p className="text-amber-400 text-xs">No ties in elimination — enter different scores</p>
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button variant="ghost" onClick={() => setSelectedMatch(null)} className="flex-1 border border-gray-700 text-gray-400">Cancel</Button>
-                <Button onClick={submitScore} disabled={score1 === '' || score2 === '' || score1 === score2}
-                  className="flex-1 bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40">Save Score</Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Score entry — ties are never allowed in elimination (allowTies defaults to false) */}
+      <ScoreSheet
+        open={!!selectedMatch}
+        onOpenChange={(open) => !open && setSelectedMatch(null)}
+        team1={
+          selectedMatch
+            ? {
+                seed: tournament.teams.find((t) => t.id === selectedMatch.team1Id)?.seed,
+                name: teamName(selectedMatch.team1Id),
+              }
+            : { name: '' }
+        }
+        team2={
+          selectedMatch
+            ? {
+                seed: tournament.teams.find((t) => t.id === selectedMatch.team2Id)?.seed,
+                name: teamName(selectedMatch.team2Id),
+              }
+            : { name: '' }
+        }
+        initialScore1={selectedMatch?.team1Score}
+        initialScore2={selectedMatch?.team2Score}
+        onLock={submitScore}
+      />
     </div>
   );
 }

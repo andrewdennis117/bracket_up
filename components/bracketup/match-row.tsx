@@ -59,10 +59,13 @@ export function MatchRow({
             ? cn(
                 'min-h-[72px] rounded-card border bg-surface px-4 py-3',
                 state === 'current' && 'border-brand-deep shadow-glow',
-                state === 'locked' && 'border-done-deep shadow-locked',
-                justSettled && 'motion-safe:animate-settle'
+                state === 'locked' && 'border-done-deep shadow-locked'
               )
             : 'h-12 border-b border-line-soft px-1',
+          // Round robin has no card ('locked') state at all — a match goes
+          // straight from upcoming to final — so the flash has to work on
+          // the plain hairline row too, not just the card states.
+          justSettled && 'motion-safe:animate-settle',
           !onClick && 'cursor-default'
         )}
       >
