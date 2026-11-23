@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { StickyActionBar } from '@/components/bracketup/sticky-action-bar';
 import { Player } from '@/types/tournament';
 import { generateId } from '@/lib/tournament-logic';
-import { Plus, X, UserPlus, ArrowRight, ArrowLeft } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Plus, X, ChevronLeft } from 'lucide-react';
 
 interface Step2Props {
   players: Player[];
@@ -22,16 +21,26 @@ export default function Step2Players({ players, format, onChange, onNext, onBack
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const addPlayer = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    if (players.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
-      setError(`"${trimmed}" is already added`);
-      return;
+  const addNames = (names: string[]) => {
+    const existing = new Set(players.map((p) => p.name.toLowerCase()));
+    const toAdd: Player[] = [];
+    let skipped = 0;
+
+    for (const raw of names) {
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (existing.has(key)) {
+        skipped++;
+        continue;
+      }
+      existing.add(key);
+      toAdd.push({ id: generateId(), name: trimmed });
     }
-    onChange([...players, { id: generateId(), name: trimmed }]);
+
+    if (toAdd.length > 0) onChange([...players, ...toAdd]);
+    setError(skipped > 0 && toAdd.length === 0 ? 'Already added' : '');
     setInputValue('');
-    setError('');
     inputRef.current?.focus();
   };
 
@@ -40,130 +49,94 @@ export default function Step2Players({ players, format, onChange, onNext, onBack
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      addPlayer(inputValue);
-    }
+    if (e.key === 'Enter') addNames([inputValue]);
   };
 
+  // Paste a comma- or newline-separated list to add many players at once.
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (!/[,\n]/.test(text)) return; // a single name pastes normally
+    e.preventDefault();
+    addNames(text.split(/[,\n]+/));
+  };
+
+  const min = format === 'doubles' ? 4 : 2;
+  const canContinue = players.length >= min;
+  const hasSolo = format === 'doubles' && players.length % 2 !== 0;
+
   const handleNext = () => {
-    const min = format === 'doubles' ? 4 : 2;
-    if (players.length < min) {
-      setError(`Need at least ${min} players for ${format}`);
-      return;
-    }
-    setError('');
+    if (!canContinue) return;
     onNext();
   };
 
-  const teamsCount = format === 'doubles' ? Math.ceil(players.length / 2) : players.length;
-  const hasSolo = format === 'doubles' && players.length % 2 !== 0;
-
   return (
-    <div className="space-y-5">
-      {/* Header info */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-400">
-          <span className="text-white font-semibold">{players.length}</span> players
-          {format === 'doubles' && (
-            <span className="ml-2 text-gray-500">
-              → <span className="text-white font-semibold">{teamsCount}</span> teams
-              {hasSolo && <span className="text-amber-400 ml-1">(+1 solo)</span>}
-            </span>
-          )}
-        </div>
-        <Badge
-          variant="outline"
-          className="border-gray-700 text-gray-400 capitalize"
-        >
-          {format}
-        </Badge>
-      </div>
+    <div className="flex min-h-[70dvh] flex-col">
+      <div className="flex-1 space-y-4">
+        <h2 className="text-lg font-semibold text-fg">Players · {players.length}</h2>
 
-      {/* Input */}
-      <div className="flex gap-2">
-        <div className="flex-1">
+        {/* Pinned add-player row */}
+        <div className="flex gap-2">
           <Input
             ref={inputRef}
-            placeholder="Player name..."
+            placeholder="Add player"
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);
               setError('');
             }}
             onKeyDown={handleKeyDown}
-            className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 h-12 text-base"
+            onPaste={handlePaste}
+            className="h-12 flex-1 border-line-strong bg-surface text-base text-fg placeholder:text-fg-muted"
           />
+          <Button size="icon-lg" onClick={() => addNames([inputValue])} aria-label="Add player">
+            <Plus className="h-5 w-5" />
+          </Button>
         </div>
-        <Button
-          onClick={() => addPlayer(inputValue)}
-          className="h-12 px-4 bg-violet-600 hover:bg-violet-500 text-white rounded-xl"
-        >
-          <Plus className="w-5 h-5" />
-        </Button>
-      </div>
+        {error && <p className="text-xs text-danger">{error}</p>}
 
-      {error && <p className="text-red-400 text-xs -mt-2">{error}</p>}
-
-      {/* Player list */}
-      {players.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-gray-600">
-          <UserPlus className="w-10 h-10 mb-3" />
-          <p className="text-sm">Add players above to get started</p>
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-          {players.map((player, i) => (
-            <div
-              key={player.id}
-              className={cn(
-                'flex items-center justify-between px-4 py-3 rounded-xl bg-gray-800 border border-gray-700',
-                'animate-in slide-in-from-top-2 duration-200'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-gray-500 text-sm w-5 text-right">{i + 1}</span>
-                <span className="text-white font-medium">{player.name}</span>
-                {hasSolo && i === players.length - 1 && (
-                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs">
-                    Solo
-                  </Badge>
-                )}
+        {players.length === 0 ? (
+          <p className="py-8 text-center text-sm text-fg-muted">
+            Add players above — paste a comma or newline list to add many at once.
+          </p>
+        ) : (
+          <div>
+            {players.map((player, i) => (
+              <div key={player.id} className="flex h-[52px] items-center gap-3 border-b border-line-soft">
+                <span className="w-5 shrink-0 text-right font-mono text-sm text-fg-muted">{i + 1}</span>
+                <span className="flex-1 truncate text-base text-fg">{player.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removePlayer(player.id)}
+                  aria-label={`Remove ${player.name}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center text-fg-muted transition-colors hover:text-danger"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                onClick={() => removePlayer(player.id)}
-                className="text-gray-600 hover:text-red-400 transition-colors p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tip */}
-      {players.length > 0 && hasSolo && (
-        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-sm text-amber-300">
-          Odd number of players — the last player will be a solo team. They&apos;ll get extra byes in the bracket.
-        </div>
-      )}
-
-      {/* Nav */}
-      <div className="flex gap-3 pt-2">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="flex-1 h-12 text-gray-400 border border-gray-700 rounded-xl"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back
-        </Button>
-        <Button
-          onClick={handleNext}
-          disabled={players.length < (format === 'doubles' ? 4 : 2)}
-          className="flex-2 flex-1 h-12 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold disabled:opacity-40"
-        >
-          Next: Teams <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {!canContinue ? (
+        <p className="pb-2 text-center text-xs text-fg-muted">
+          Add at least {min} players for {format}
+        </p>
+      ) : (
+        hasSolo && (
+          <p className="pb-2 text-center text-xs text-elim-fg">
+            Odd number of players — the last one gets a solo team with extra byes
+          </p>
+        )
+      )}
+      <StickyActionBar className="-mx-5 px-5">
+        <Button size="cta" variant="secondary" onClick={onBack} aria-label="Back" className="w-[54px] shrink-0 px-0">
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <Button size="cta" className="flex-1" onClick={handleNext} disabled={!canContinue}>
+          Next
+        </Button>
+      </StickyActionBar>
     </div>
   );
 }

@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StickyActionBar } from '@/components/bracketup/sticky-action-bar';
 import { Player, Team } from '@/types/tournament';
 import { generateId, randomPairPlayers, getTeamDisplayName } from '@/lib/tournament-logic';
-import { Shuffle, Plus, X, Users, ArrowRight, ArrowLeft, UserCheck } from 'lucide-react';
+import { Shuffle, X, ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Step3Props {
@@ -17,238 +17,150 @@ interface Step3Props {
   onBack: () => void;
 }
 
+/**
+ * Manual mode drops the old text-input "add existing team" form (typing two
+ * names + an optional team name via a datalist) for the spec's tap-to-pair
+ * flow. That also drops the ability to give a team a custom display name —
+ * getTeamDisplayName's "Dana & Ray" fallback is all Manual mode produces now,
+ * matching the spec's own example text, which doesn't describe a naming step.
+ */
 export default function Step3Pairing({ players, teams, onChange, onNext, onBack }: Step3Props) {
-  const [addTeamMode, setAddTeamMode] = useState(false);
-  const [teamPlayer1, setTeamPlayer1] = useState('');
-  const [teamPlayer2, setTeamPlayer2] = useState('');
-  const [teamName, setTeamName] = useState('');
-  const [error, setError] = useState('');
+  const [mode, setMode] = useState<'random' | 'manual'>('random');
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
 
   const pairedPlayerIds = new Set(teams.flatMap((t) => t.playerIds));
   const unpairedPlayers = players.filter((p) => !pairedPlayerIds.has(p.id));
 
-  const handleShuffle = () => {
-    // Keep preset teams, re-randomize the rest
+  const handlePairRemaining = () => {
     const presetTeams = teams.filter((t) => t.isPreset);
-    const newTeams = randomPairPlayers(players, presetTeams);
-    onChange(newTeams);
+    onChange(randomPairPlayers(players, presetTeams));
   };
 
-  const handleShuffleAll = () => {
-    // Wipe everything and re-randomize all players from scratch
-    const newTeams = randomPairPlayers(players, []);
-    onChange(newTeams);
-  };
-
-  const handleAddPresetTeam = () => {
-    const p1 = players.find(
-      (p) => p.name.toLowerCase() === teamPlayer1.trim().toLowerCase()
-    );
-    const p2 = players.find(
-      (p) => p.name.toLowerCase() === teamPlayer2.trim().toLowerCase()
-    );
-
-    if (!p1) { setError(`Player "${teamPlayer1}" not found`); return; }
-    if (!p2) { setError(`Player "${teamPlayer2}" not found`); return; }
-    if (p1.id === p2.id) { setError('Select two different players'); return; }
-    if (pairedPlayerIds.has(p1.id)) { setError(`${p1.name} is already on a team`); return; }
-    if (pairedPlayerIds.has(p2.id)) { setError(`${p2.name} is already on a team`); return; }
-
-    const newTeam: Team = {
-      id: generateId(),
-      name: teamName.trim() || undefined,
-      playerIds: [p1.id, p2.id],
-      isPreset: true,
-    };
-
-    onChange([...teams, newTeam]);
-    setTeamPlayer1('');
-    setTeamPlayer2('');
-    setTeamName('');
-    setError('');
-    setAddTeamMode(false);
+  const handleReshuffleAll = () => {
+    onChange(randomPairPlayers(players, []));
   };
 
   const removeTeam = (teamId: string) => {
     onChange(teams.filter((t) => t.id !== teamId));
   };
 
-  const allPaired = unpairedPlayers.length === 0 || (unpairedPlayers.length === 1);
+  const tapPlayer = (playerId: string) => {
+    if (selectedPlayerId === playerId) {
+      setSelectedPlayerId(null);
+      return;
+    }
+    if (!selectedPlayerId) {
+      setSelectedPlayerId(playerId);
+      return;
+    }
+    const newTeam: Team = {
+      id: generateId(),
+      playerIds: [selectedPlayerId, playerId],
+      isPreset: true,
+    };
+    onChange([...teams, newTeam]);
+    setSelectedPlayerId(null);
+  };
+
+  const canContinue = teams.length >= 2;
 
   return (
-    <div className="space-y-5">
-      {/* Summary */}
-      <div className="flex items-center justify-between text-sm">
-        <span className="text-gray-400">
-          <span className="text-white font-semibold">{teams.length}</span> teams formed
+    <div className="flex min-h-[70dvh] flex-col">
+      <div className="flex-1 space-y-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold text-fg">Teams · {teams.length}</h2>
           {unpairedPlayers.length > 0 && (
-            <span className="text-amber-400 ml-2">· {unpairedPlayers.length} unpaired</span>
+            <span className="text-xs text-elim-fg">{unpairedPlayers.length} unpaired</span>
           )}
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAddTeamMode(!addTeamMode)}
-          className="text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 h-8 text-xs gap-1"
-        >
-          <Plus className="w-3 h-3" /> Add Team
-        </Button>
-      </div>
-
-      {/* Add preset team form */}
-      {addTeamMode && (
-        <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4 space-y-3">
-          <p className="text-sm font-medium text-gray-300">Add Existing Team</p>
-          <Input
-            placeholder="Player 1 name"
-            value={teamPlayer1}
-            onChange={(e) => { setTeamPlayer1(e.target.value); setError(''); }}
-            className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-600 h-10"
-            list="player-names"
-          />
-          <Input
-            placeholder="Player 2 name"
-            value={teamPlayer2}
-            onChange={(e) => { setTeamPlayer2(e.target.value); setError(''); }}
-            className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-600 h-10"
-            list="player-names"
-          />
-          <Input
-            placeholder="Team name (optional)"
-            value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
-            className="bg-gray-900 border-gray-700 text-white placeholder:text-gray-600 h-10"
-          />
-          {error && <p className="text-red-400 text-xs">{error}</p>}
-          <datalist id="player-names">
-            {players.map((p) => (
-              <option key={p.id} value={p.name} />
-            ))}
-          </datalist>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setAddTeamMode(false); setError(''); }}
-              className="flex-1 border border-gray-700 text-gray-400"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleAddPresetTeam}
-              className="flex-1 bg-violet-600 hover:bg-violet-500 text-white"
-            >
-              <UserCheck className="w-4 h-4 mr-1" /> Add Team
-            </Button>
-          </div>
         </div>
-      )}
 
-      {/* Shuffle buttons */}
-      <div className="flex gap-2">
-        {unpairedPlayers.length >= 2 && (
-          <Button
-            onClick={handleShuffle}
-            variant="outline"
-            className="flex-1 h-11 border-dashed border-gray-600 text-gray-300 hover:text-white hover:border-violet-500 hover:bg-violet-500/5 rounded-xl"
-          >
-            <Shuffle className="w-4 h-4 mr-2" />
-            {teams.length === 0 ? 'Pair All' : 'Pair Remaining'}
+        <Tabs value={mode} onValueChange={(v) => setMode(v as 'random' | 'manual')}>
+          <TabsList className="h-11 w-full">
+            <TabsTrigger value="random" className="h-full text-sm">
+              Random
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="h-full text-sm">
+              Manual
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {mode === 'random' && unpairedPlayers.length >= 2 && (
+          <Button variant="secondary" className="w-full gap-2" onClick={handlePairRemaining}>
+            <Shuffle className="h-4 w-4" />
+            {teams.length === 0 ? 'Shuffle teams' : 'Pair remaining'}
           </Button>
         )}
-        {teams.length > 0 && (
-          <Button
-            onClick={handleShuffleAll}
-            variant="outline"
-            className="flex-1 h-11 border-dashed border-red-900/50 text-red-400/70 hover:text-red-300 hover:border-red-500/50 hover:bg-red-500/5 rounded-xl"
-          >
-            <Shuffle className="w-4 h-4 mr-2" />
-            Reshuffle All
-          </Button>
-        )}
-      </div>
 
-      {/* Teams list */}
-      {teams.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-8 text-gray-600">
-          <Users className="w-10 h-10 mb-3" />
-          <p className="text-sm">No teams yet — add one manually or shuffle</p>
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-          {teams.map((team, i) => (
-            <div
-              key={team.id}
-              className={cn(
-                'flex items-center justify-between px-4 py-3 rounded-xl border transition-all',
-                team.isPreset
-                  ? 'bg-violet-500/10 border-violet-500/30'
-                  : 'bg-gray-800 border-gray-700'
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-gray-500 text-sm w-5 text-right">{i + 1}</span>
-                <div>
-                  <p className="text-white font-medium text-sm">
-                    {getTeamDisplayName(team, players)}
-                  </p>
-                  {team.playerIds.length === 1 && (
-                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-xs mt-0.5">
-                      Solo
-                    </Badge>
+        {mode === 'manual' && (
+          <div>
+            <p className="mb-2 text-xs uppercase tracking-wider text-fg-muted">Tap two players to pair them</p>
+            <div className="flex flex-wrap gap-2">
+              {unpairedPlayers.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => tapPlayer(p.id)}
+                  className={cn(
+                    'h-11 rounded-control border-2 px-4 text-sm font-medium transition-colors',
+                    selectedPlayerId === p.id
+                      ? 'border-brand-line bg-brand-deep/40 text-fg'
+                      : 'border-line-strong bg-surface-2 text-fg'
                   )}
-                </div>
-                {team.isPreset && (
-                  <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30 text-xs">
-                    Preset
-                  </Badge>
-                )}
-              </div>
-              <button
-                onClick={() => removeTeam(team.id)}
-                className="text-gray-600 hover:text-red-400 transition-colors p-1"
-              >
-                <X className="w-4 h-4" />
-              </button>
+                >
+                  {p.name}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+            {unpairedPlayers.length === 0 && (
+              <p className="py-4 text-center text-sm text-fg-muted">Everyone&apos;s paired up.</p>
+            )}
+          </div>
+        )}
 
-      {/* Unpaired players */}
-      {unpairedPlayers.length > 0 && (
-        <div className="bg-gray-800/50 rounded-xl p-3">
-          <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">
-            Unpaired Players
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {unpairedPlayers.map((p) => (
-              <Badge key={p.id} variant="outline" className="border-gray-600 text-gray-400 text-xs">
-                {p.name}
-              </Badge>
+        {teams.length > 0 && (
+          <div>
+            {teams.map((team, i) => (
+              // Keyed by team.id, which is freshly generated on every
+              // shuffle — new DOM nodes naturally fade in via animate-in,
+              // approximating the spec's "150ms crossfade" without a
+              // separate transition system.
+              <div
+                key={team.id}
+                className="flex h-[52px] animate-in items-center gap-3 border-b border-line-soft fade-in-0 duration-150"
+              >
+                <span className="w-5 shrink-0 text-right font-mono text-sm text-fg-muted">{i + 1}</span>
+                <span className="flex-1 truncate text-base text-fg">{getTeamDisplayName(team, players)}</span>
+                <button
+                  type="button"
+                  onClick={() => removeTeam(team.id)}
+                  aria-label={`Unpair ${getTeamDisplayName(team, players)}`}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center text-fg-muted transition-colors hover:text-danger"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Nav */}
-      <div className="flex gap-3 pt-2">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="flex-1 h-12 text-gray-400 border border-gray-700 rounded-xl"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back
-        </Button>
-        <Button
-          onClick={onNext}
-          disabled={teams.length < 2}
-          className="flex-1 h-12 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold disabled:opacity-40"
-        >
-          Next: Prizes <ArrowRight className="w-4 h-4 ml-2" />
-        </Button>
+        {mode === 'random' && teams.length > 0 && (
+          <Button variant="ghost" className="w-full gap-2 text-fg-muted" onClick={handleReshuffleAll}>
+            <Shuffle className="h-4 w-4" />
+            Reshuffle all
+          </Button>
+        )}
       </div>
+
+      {!canContinue && <p className="pb-2 text-center text-xs text-fg-muted">Pair at least 2 teams</p>}
+      <StickyActionBar className="-mx-5 px-5">
+        <Button size="cta" variant="secondary" onClick={onBack} aria-label="Back" className="w-[54px] shrink-0 px-0">
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <Button size="cta" className="flex-1" onClick={onNext} disabled={!canContinue}>
+          Next
+        </Button>
+      </StickyActionBar>
     </div>
   );
 }

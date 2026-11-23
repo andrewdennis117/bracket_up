@@ -8,8 +8,9 @@ import {
   getAllRoundsComplete,
   getEliminationRoundLabel,
   getTeamPathMatchIds,
+  sortTournamentsForDashboard,
 } from '@/lib/tournament-logic';
-import { Player, Team, RoundRobinMatch } from '@/types/tournament';
+import { Player, Team, RoundRobinMatch, Tournament } from '@/types/tournament';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -369,6 +370,56 @@ describe('getAllRoundsComplete', () => {
       completeMatch(m, 10, 5)
     );
     expect(getAllRoundsComplete(matches)).toBe(true);
+  });
+});
+
+describe('sortTournamentsForDashboard', () => {
+  function makeTournament(phase: Tournament['phase'], createdAt: string, name: string): Tournament {
+    return {
+      id: name,
+      hostId: 'local',
+      hostName: 'Host',
+      name,
+      event: 'ping-pong',
+      format: 'singles',
+      entryFeePerPlayer: 0,
+      prizeSplit: { firstPercent: 70, secondPercent: 30 },
+      phase,
+      players: [],
+      teams: [],
+      roundRobinMatches: [],
+      eliminationMatches: [],
+      shareCode: 'CODE01',
+      createdAt,
+    };
+  }
+
+  test('active phases (round-robin, elimination) sort before complete, which sorts before draft', () => {
+    const draft = makeTournament('setup', '2024-01-01', 'draft');
+    const complete = makeTournament('complete', '2024-01-02', 'complete');
+    const rr = makeTournament('round-robin', '2024-01-03', 'rr');
+    const elim = makeTournament('elimination', '2024-01-04', 'elim');
+
+    const sorted = sortTournamentsForDashboard([draft, complete, rr, elim]);
+    const phases = sorted.map((t) => t.phase);
+    expect(phases.indexOf('round-robin')).toBeLessThan(phases.indexOf('complete'));
+    expect(phases.indexOf('elimination')).toBeLessThan(phases.indexOf('complete'));
+    expect(phases.indexOf('complete')).toBeLessThan(phases.indexOf('setup'));
+  });
+
+  test('within the same phase bucket, most recently created sorts first', () => {
+    const older = makeTournament('round-robin', '2024-01-01', 'older');
+    const newer = makeTournament('round-robin', '2024-06-01', 'newer');
+
+    const sorted = sortTournamentsForDashboard([older, newer]);
+    expect(sorted.map((t) => t.name)).toEqual(['newer', 'older']);
+  });
+
+  test('does not mutate the input array', () => {
+    const input = [makeTournament('complete', '2024-01-01', 'a'), makeTournament('round-robin', '2024-01-02', 'b')];
+    const inputCopy = [...input];
+    sortTournamentsForDashboard(input);
+    expect(input).toEqual(inputCopy);
   });
 });
 

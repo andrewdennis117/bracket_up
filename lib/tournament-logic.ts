@@ -1,4 +1,4 @@
-import { Team, RoundRobinMatch, EliminationMatch, Player } from '@/types/tournament';
+import { Team, RoundRobinMatch, EliminationMatch, Player, Tournament } from '@/types/tournament';
 
 // ─── ID generators ───────────────────────────────────────────────────────────
 
@@ -352,6 +352,52 @@ export function getEliminationRoundLabel(round: number): string {
   if (round === 2) return 'Semis';
   if (round === 3) return 'Quarters';
   return `Round of ${Math.pow(2, round)}`;
+}
+
+/**
+ * Dashboard sort order: active tournaments (round-robin, elimination) first,
+ * then complete, then draft (setup/pairing — unreachable today, since every
+ * tournament is created already in round-robin phase, but handled for
+ * forward compatibility). Within each bucket, most-recent first — there's
+ * no `updatedAt` on Tournament (data model doesn't change in this
+ * redesign), so this uses `createdAt` as an approximation, not a true
+ * last-touched order.
+ */
+const DASHBOARD_PHASE_RANK: Record<Tournament['phase'], number> = {
+  'round-robin': 0,
+  elimination: 0,
+  complete: 1,
+  setup: 2,
+  pairing: 2,
+};
+
+export function sortTournamentsForDashboard(tournaments: Tournament[]): Tournament[] {
+  return [...tournaments].sort((a, b) => {
+    const rankDiff = DASHBOARD_PHASE_RANK[a.phase] - DASHBOARD_PHASE_RANK[b.phase];
+    if (rankDiff !== 0) return rankDiff;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+/**
+ * Progress (0–1) within a tournament's current phase — all round-robin
+ * matches regardless of round (there's no "current round" filter; see the
+ * implementation plan), non-bye matches only for elimination, 1 once
+ * complete. Shared by the tournament page's PhaseRail and the dashboard's
+ * compact per-row PhaseRail.
+ */
+export function getPhaseProgress(
+  tournament: Pick<Tournament, 'phase' | 'roundRobinMatches' | 'eliminationMatches'>
+): number {
+  if (tournament.phase === 'elimination') {
+    const playable = tournament.eliminationMatches.filter((m) => !m.isBye);
+    return playable.length > 0 ? playable.filter((m) => m.status === 'complete').length / playable.length : 0;
+  }
+  if (tournament.phase === 'complete') return 1;
+  const { roundRobinMatches } = tournament;
+  return roundRobinMatches.length > 0
+    ? roundRobinMatches.filter((m) => m.status === 'complete').length / roundRobinMatches.length
+    : 0;
 }
 
 /**
