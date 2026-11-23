@@ -1,11 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trophy, DollarSign } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { StickyActionBar } from '@/components/bracketup/sticky-action-bar';
 import { cn } from '@/lib/utils';
+import { ChevronLeft } from 'lucide-react';
 
 interface Step4Props {
   data: {
@@ -19,168 +18,158 @@ interface Step4Props {
   onBack: () => void;
 }
 
-const PRESET_SPLITS = [
-  { label: '60 / 40', first: 60, second: 40 },
-  { label: '70 / 30', first: 70, second: 30 },
-  { label: '75 / 25', first: 75, second: 25 },
-  { label: '50 / 50', first: 50, second: 50 },
-];
-
 export default function Step4Prizes({ data, playerCount, onChange, onSubmit, onBack }: Step4Props) {
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
+  const noPrizes = data.entryFeePerPlayer === 0;
   const totalPot = data.entryFeePerPlayer * playerCount;
-  const firstTeamPayout = (totalPot * data.firstPercent) / 100;
-  const secondTeamPayout = (totalPot * data.secondPercent) / 100;
-  const splitTotal = data.firstPercent + data.secondPercent;
+  const firstPayout = (totalPot * data.firstPercent) / 100;
+  const secondPayout = (totalPot * data.secondPercent) / 100;
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (data.entryFeePerPlayer < 0) e.fee = 'Entry fee cannot be negative';
-    if (splitTotal !== 100) e.split = 'Percentages must add up to 100%';
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  const fmt = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
+
+  // Editing one percent field always keeps the other at 100 - value, so
+  // there's nothing to validate — the split can never be out of sync.
+  const setFirstPercent = (value: number) => {
+    const clamped = Math.max(0, Math.min(100, value));
+    onChange({ firstPercent: clamped, secondPercent: 100 - clamped });
   };
-
-  const handleSubmit = () => {
-    if (validate()) onSubmit();
+  const setSecondPercent = (value: number) => {
+    const clamped = Math.max(0, Math.min(100, value));
+    onChange({ secondPercent: clamped, firstPercent: 100 - clamped });
   };
-
-  const fmt = (n: number) =>
-    n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
   return (
-    <div className="space-y-6">
-      {/* Entry fee */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium text-gray-200">Entry Fee per Player</Label>
-        <div className="relative">
-          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-          <Input
-            type="number"
-            min={0}
-            step={1}
-            placeholder="0.00"
-            value={data.entryFeePerPlayer || ''}
-            onChange={(e) => onChange({ entryFeePerPlayer: parseFloat(e.target.value) || 0 })}
-            className="bg-gray-800 border-gray-700 text-white pl-9 h-12 text-base"
-          />
+    <div className="flex min-h-[70dvh] flex-col">
+      <div className="flex-1 space-y-7">
+        <div className="space-y-2">
+          <Label htmlFor="entry-fee" className="text-sm text-fg-muted">
+            Entry fee per player
+          </Label>
+          <div className="relative">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 font-mono text-[28px] font-bold text-fg-muted">
+              $
+            </span>
+            <input
+              id="entry-fee"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={1}
+              value={data.entryFeePerPlayer || ''}
+              onChange={(e) => onChange({ entryFeePerPlayer: Math.max(0, parseFloat(e.target.value) || 0) })}
+              placeholder="0"
+              className="h-16 w-full rounded-control border border-line-strong bg-surface pl-10 pr-4 font-mono text-[28px] font-bold tracking-[-0.02em] text-fg outline-none placeholder:text-fg-muted"
+            />
+          </div>
+          {totalPot > 0 && (
+            <p className="text-sm text-fg-muted">
+              Pot{' '}
+              <span className="font-mono text-base font-bold tracking-[-0.03em] text-fg">{fmt(totalPot)}</span>
+              <span className="ml-1 text-fg-faint">
+                ({playerCount} × {fmt(data.entryFeePerPlayer)})
+              </span>
+            </p>
+          )}
         </div>
-        {errors.fee && <p className="text-red-400 text-xs">{errors.fee}</p>}
-        {totalPot > 0 && (
-          <p className="text-sm text-gray-400">
-            Total pot: <span className="text-white font-semibold">{fmt(totalPot)}</span>
-            <span className="text-gray-600 ml-1">({playerCount} players × {fmt(data.entryFeePerPlayer)})</span>
-          </p>
-        )}
-      </div>
 
-      {/* Prize split */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium text-gray-200">Prize Split</Label>
-
-        {/* Presets */}
-        <div className="grid grid-cols-4 gap-2">
-          {PRESET_SPLITS.map((preset) => (
-            <button
-              key={preset.label}
-              onClick={() => onChange({ firstPercent: preset.first, secondPercent: preset.second })}
+        {/* "No prizes" switch — no Switch primitive is installed; a small
+            accessible role="switch" button is simpler than adding one. */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={noPrizes}
+          onClick={() => onChange({ entryFeePerPlayer: noPrizes ? 10 : 0 })}
+          className="flex w-full items-center justify-between border-b border-line py-3"
+        >
+          <span className="text-sm text-fg">No prizes</span>
+          <span
+            className={cn(
+              'relative h-6 w-10 shrink-0 rounded-full transition-colors',
+              noPrizes ? 'bg-brand' : 'bg-surface-2'
+            )}
+          >
+            <span
               className={cn(
-                'py-2 px-1 rounded-lg text-xs font-semibold border-2 transition-all',
-                data.firstPercent === preset.first && data.secondPercent === preset.second
-                  ? 'border-violet-500 bg-violet-500/10 text-white'
-                  : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600 hover:text-white'
+                'absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform',
+                noPrizes ? 'translate-x-[18px]' : 'translate-x-0.5'
               )}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
+            />
+          </span>
+        </button>
 
-        {/* Custom inputs */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-gray-500">1st Place %</Label>
-            <div className="relative">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={data.firstPercent}
-                onChange={(e) => onChange({ firstPercent: parseInt(e.target.value) || 0 })}
-                className="bg-gray-800 border-gray-700 text-white h-10 pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-gray-500">2nd Place %</Label>
-            <div className="relative">
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={data.secondPercent}
-                onChange={(e) => onChange({ secondPercent: parseInt(e.target.value) || 0 })}
-                className="bg-gray-800 border-gray-700 text-white h-10 pr-8"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>
-            </div>
-          </div>
-        </div>
-
-        {splitTotal !== 100 && (
-          <p className="text-amber-400 text-xs">
-            Currently {splitTotal}% — must equal 100%
-          </p>
-        )}
-        {errors.split && <p className="text-red-400 text-xs">{errors.split}</p>}
-      </div>
-
-      {/* Payout preview */}
-      {totalPot > 0 && splitTotal === 100 && (
-        <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Payout Preview</p>
-          <div className="space-y-2">
-            {[
-              { place: '🥇 1st Place', pct: data.firstPercent, team: firstTeamPayout },
-              { place: '🥈 2nd Place', pct: data.secondPercent, team: secondTeamPayout },
-            ].map(({ place, pct, team }) => (
-              <div key={place} className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">{place} ({pct}%)</span>
-                <div className="text-right">
-                  <div className="text-white font-semibold text-sm">{fmt(team)} total</div>
-                  <div className="text-gray-500 text-xs">{fmt(team / 2)} / player</div>
+        {!noPrizes && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="first-percent" className="text-xs text-fg-muted">
+                  1st place
+                </Label>
+                <div className="relative">
+                  <input
+                    id="first-percent"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={100}
+                    value={data.firstPercent}
+                    onChange={(e) => setFirstPercent(parseInt(e.target.value, 10) || 0)}
+                    className="h-11 w-full rounded-control border border-line-strong bg-surface pl-3 pr-7 text-fg outline-none"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-fg-muted">
+                    %
+                  </span>
                 </div>
               </div>
-            ))}
+              <div className="space-y-1">
+                <Label htmlFor="second-percent" className="text-xs text-fg-muted">
+                  2nd place
+                </Label>
+                <div className="relative">
+                  <input
+                    id="second-percent"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={100}
+                    value={data.secondPercent}
+                    onChange={(e) => setSecondPercent(parseInt(e.target.value, 10) || 0)}
+                    className="h-11 w-full rounded-control border border-line-strong bg-surface pl-3 pr-7 text-fg outline-none"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-fg-muted">
+                    %
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
+              <div className="h-full bg-gold" style={{ flex: data.firstPercent }} />
+              <div className="h-full bg-gray-500" style={{ flex: data.secondPercent }} />
+            </div>
+
+            {totalPot > 0 && (
+              <div className="flex justify-between font-mono tabular-nums">
+                <div>
+                  <p className="text-xs text-fg-muted">1st · {data.firstPercent}%</p>
+                  <p className="text-2xl font-bold tracking-[-0.03em] text-gold">{fmt(firstPayout)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-fg-muted">2nd · {data.secondPercent}%</p>
+                  <p className="text-2xl font-bold tracking-[-0.03em] text-silver">{fmt(secondPayout)}</p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-
-      {/* Zero fee note */}
-      {data.entryFeePerPlayer === 0 && (
-        <p className="text-gray-500 text-xs text-center">
-          No entry fee — prize tracking will be skipped
-        </p>
-      )}
-
-      {/* Nav */}
-      <div className="flex gap-3 pt-2">
-        <Button
-          variant="ghost"
-          onClick={onBack}
-          className="flex-1 h-12 text-gray-400 border border-gray-700 rounded-xl"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold"
-        >
-          <Trophy className="w-4 h-4 mr-2" /> Start Tournament
-        </Button>
+        )}
       </div>
+
+      <StickyActionBar className="-mx-5 px-5">
+        <Button size="cta" variant="secondary" onClick={onBack} aria-label="Back" className="w-[54px] shrink-0 px-0">
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <Button size="cta" className="flex-1" onClick={onSubmit}>
+          Create tournament
+        </Button>
+      </StickyActionBar>
     </div>
   );
 }

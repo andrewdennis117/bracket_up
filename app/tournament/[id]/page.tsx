@@ -13,6 +13,7 @@ import { Share2, ChevronLeft, Users } from 'lucide-react';
 import { getEventEmoji } from '@/lib/events';
 import { PHASE_LABELS, PHASE_BADGE_CLASSES } from '@/lib/phases';
 import { PhaseRail } from '@/components/bracketup/phase-rail';
+import { getPhaseProgress } from '@/lib/tournament-logic';
 
 export default function TournamentPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function TournamentPage() {
     // after mount rather than read during render.
     const t = getTournament(params.id as string);
     if (!t) {
-      router.push('/');
+      router.push('/tournaments');
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -51,21 +52,7 @@ export default function TournamentPage() {
   const fmt = (n: number) =>
     n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 });
 
-  // Progress within the current phase, for PhaseRail's fill — all matches
-  // regardless of round for round robin (there's no "current round" filter
-  // anymore), non-bye matches only for elimination.
-  const phaseProgress =
-    tournament.phase === 'elimination'
-      ? (() => {
-          const playable = tournament.eliminationMatches.filter((m) => !m.isBye);
-          return playable.length > 0
-            ? playable.filter((m) => m.status === 'complete').length / playable.length
-            : 0;
-        })()
-      : tournament.roundRobinMatches.length > 0
-        ? tournament.roundRobinMatches.filter((m) => m.status === 'complete').length /
-          tournament.roundRobinMatches.length
-        : 0;
+  const phaseProgress = getPhaseProgress(tournament);
 
   return (
     <div className="min-h-screen bg-bg text-fg">
@@ -74,7 +61,7 @@ export default function TournamentPage() {
         <div className="sticky top-0 z-10 border-b border-line bg-bg/95 px-4 py-3 backdrop-blur">
           <div className="flex items-center justify-between">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push('/tournaments')}
               className="-ml-1 p-1 text-fg-muted transition-colors hover:text-fg"
             >
               <ChevronLeft className="h-5 w-5" />
