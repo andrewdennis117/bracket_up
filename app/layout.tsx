@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from 'next';
-import { Geist } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 
-const geist = Geist({ subsets: ['latin'] });
+const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
   title: 'BracketUp – Run better tournaments',
@@ -19,8 +20,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // No maximumScale / userScalable: false here — pinch-zoom must stay
+  // available for the Lighthouse accessibility >= 95 target in the spec's
+  // own acceptance criteria.
+  viewportFit: 'cover',
   themeColor: '#030712',
 };
 
@@ -30,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geist.className} bg-gray-950 antialiased`}>
+    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable}`}>
+      <body className="bg-gray-950 antialiased">
         {children}
         <Toaster theme="dark" />
       </body>

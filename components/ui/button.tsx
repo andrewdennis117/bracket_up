@@ -33,6 +33,10 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        // BracketUp redesign: primary/secondary CTAs (54px) and the
+        // ScoreSheet's "Lock in" (56px) — see spec's Buttons / cta token.
+        cta: "h-[54px] rounded-control gap-2 px-5 text-base font-semibold has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4 [&_svg:not([class*='size-'])]:size-5",
+        "cta-lg": "h-14 rounded-control gap-2 px-5 text-base font-semibold has-data-[icon=inline-end]:pr-4 has-data-[icon=inline-start]:pl-4 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {
